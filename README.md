@@ -14,7 +14,7 @@ A lightweight crypto payment processor microservice, written in Golang, designed
 ## Getting Started
 ### Prerequisites
 - Go ≥ 1.22
-- PostgreSQL ≥ 16
+- PostgreSQL ≥ 12
 
 ### Installation
 #### Docker
@@ -31,7 +31,6 @@ A lightweight crypto payment processor microservice, written in Golang, designed
     SERVER_HOST=localhost
     SERVER_PORT=3000
 
-    # As for now, only PostgreSQL is supported
     DATABASE_HOST=localhost
     DATABASE_PORT=5432
     DATABASE_USER=postgres
