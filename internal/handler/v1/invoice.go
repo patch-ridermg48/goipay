@@ -26,12 +26,19 @@ func (i *InvoiceGrpc) CreateInvoice(ctx context.Context, req *pb_v1.CreateInvoic
 		i.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlTxInitMsg)
 	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		} else {
+			err = tx.Commit(ctx)
+		}
+	}()
 
 	if req.Amount < 0 {
-		return nil, status.Error(codes.InvalidArgument, "Invoice amount can't be below 0")
+		return nil, status.Error(codes.InvalidArgument, "Invoice amount can't be below 0.")
 	}
 	if err := checkIfUserExistsString(ctx, i.log, q, req.UserId); err != nil {
-		tx.Rollback(ctx)
+		// tx.Rollback(ctx)
 		return nil, err
 	}
 
@@ -42,7 +49,7 @@ func (i *InvoiceGrpc) CreateInvoice(ctx context.Context, req *pb_v1.CreateInvoic
 		return nil, status.Error(codes.Internal, errMsg)
 	}
 
-	tx.Commit(ctx)
+	// tx.Commit(ctx)
 
 	return &pb_v1.CreateInvoiceResponse{PaymentId: util.PgUUIDToString(invoice.ID), Address: invoice.CryptoAddress}, nil
 }
@@ -53,21 +60,28 @@ func (i *InvoiceGrpc) GetInvoices(ctx context.Context, req *pb_v1.GetInvoicesReq
 		i.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlTxInitMsg)
 	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		} else {
+			err = tx.Commit(ctx)
+		}
+	}()
 
 	ids := make([]pgtype.UUID, 0, len(req.PaymentIds))
 	for j := 0; j < len(req.PaymentIds); j++ {
 		id, err := util.StringToPgUUID(req.PaymentIds[j])
 		if err != nil {
-			tx.Rollback(ctx)
+			// tx.Rollback(ctx)
 			i.log.Err(err).Msg("An error occurred while converting the string to the PostgreSQL UUID data type.")
-			return nil, status.Error(codes.Internal, "invalid payment id")
+			return nil, status.Error(codes.Internal, "Invalid paymentId (invalid UUID).")
 		}
 		ids = append(ids, *id)
 	}
 
 	invoices, err := q.FindAllInvoicesByIds(ctx, ids)
 	if err != nil {
-		tx.Rollback(ctx)
+		// tx.Rollback(ctx)
 		i.log.Err(err).Str("queryName", "FindAllInvoicesByIds").Msg(util.DefaultFailedSqlQueryMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 	}
@@ -77,7 +91,7 @@ func (i *InvoiceGrpc) GetInvoices(ctx context.Context, req *pb_v1.GetInvoicesReq
 		retIncoices = append(retIncoices, util.DbInvoiceToPbInvoice(&invoices[i]))
 	}
 
-	tx.Commit(ctx)
+	// tx.Commit(ctx)
 
 	return &pb_v1.GetInvoicesResponse{Invoices: retIncoices}, nil
 }
@@ -89,12 +103,12 @@ func (i *InvoiceGrpc) InvoiceStatusStream(req *pb_v1.InvoiceStatusStreamRequest,
 		select {
 		case invoice := <-invoiceCn:
 			if err := stream.Send(&pb_v1.InvoiceStatusStreamResponse{Invoice: util.DbInvoiceToPbInvoice(&invoice)}); err != nil {
-				errMsg := "An error occured while sending data"
+				errMsg := "An error occured while sending data."
 				i.log.Err(err).Msg(errMsg)
 				return status.Error(codes.Canceled, errMsg)
 			}
 		case <-stream.Context().Done():
-			return status.Error(codes.Canceled, "stream has been closed")
+			return status.Error(codes.Canceled, "Stream has been closed.")
 		}
 	}
 
