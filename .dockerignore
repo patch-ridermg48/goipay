@@ -7,4 +7,5 @@ proto
 sql
 test
 
+.coverage*
 .env*
