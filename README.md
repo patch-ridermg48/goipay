@@ -1,9 +1,5 @@
 # GoiPay
 
-<p align="center">
-  <img src="docs/media/goipay_logo_black_with_bg.png" alt="GoiPay" width="1000px" />
-</p>
-
 ## Description
 > **Note:**
 > The project is in development. This is not a release version.  
