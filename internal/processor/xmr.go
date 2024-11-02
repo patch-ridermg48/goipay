@@ -62,17 +62,11 @@ func (i incomingMoneroTxGetTx) txId() string {
 }
 
 type xmrProcessor struct {
-	log *zerolog.Logger
-
-	dbConnPool *pgxpool.Pool
-
 	daemon   daemon.IDaemonRpcClient
 	daemonEx *listener.DaemonRpcClientExecutor
 	network  utils.NetworkType
 
-	invoiceCn chan<- db.Invoice
-
-	pendingInvoices *util.SyncMapTypeSafe[string, pendingInvoice]
+	baseCryptoProcessor
 }
 
 func (p *xmrProcessor) verifyMoneroTxOnTxMempool(ctx context.Context, xmrTx incomingMoneroTx) {
@@ -213,24 +207,14 @@ func (p *xmrProcessor) confirmInvoiceHelper(ctx context.Context, value pendingIn
 	}
 	value.cancelTimeoutFunc()
 
-	q, tx, err := util.InitDbQueriesWithTx(ctx, p.dbConnPool)
+	confirmedInvoice, err := p.confirmInvoice(ctx, invoice)
 	if err != nil {
-		p.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return
 	}
-
-	confirmedInvoice, err := q.ConfirmInvoiceById(ctx, invoice.ID)
-	if err != nil {
-		tx.Rollback(ctx)
-		p.log.Err(err).Str("queryName", "ConfirmInvoiceById").Msg(util.DefaultFailedSqlQueryMsg)
-		return
-	}
-
-	tx.Commit(ctx)
 
 	go p.releaseAddressHelper(ctx, invoice)
 
-	p.invoiceCn <- confirmedInvoice
+	p.invoiceCn <- *confirmedInvoice
 }
 
 func (p *xmrProcessor) verifyMoneroTxOnNewBlock(ctx context.Context) {
@@ -240,27 +224,9 @@ func (p *xmrProcessor) verifyMoneroTxOnNewBlock(ctx context.Context) {
 	})
 }
 
-func (p *xmrProcessor) persistCryptoCacheHelper(ctx context.Context) {
-	q, tx, err := util.InitDbQueriesWithTx(ctx, p.dbConnPool)
-	if err != nil {
-		p.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
-		return
-	}
-
-	var height pgtype.Int8
-	if err := height.Scan(int64(p.daemonEx.LastSyncedBlockHeight())); err != nil {
-		tx.Rollback(ctx)
-		p.log.Err(err).Str("fieldName", "height").Msg(util.DefaultFailedScanningToPostgresqlDataTypeMsg)
-		return
-	}
-
-	if _, err := q.UpdateCryptoCacheByCoin(ctx, db.UpdateCryptoCacheByCoinParams{Coin: db.CoinTypeXMR, LastSyncedBlockHeight: height}); err != nil {
-		tx.Rollback(ctx)
-		p.log.Err(err).Str("queryName", "UpdateCryptoCacheByCoin").Msg(util.DefaultFailedSqlQueryMsg)
-		return
-	}
-
-	tx.Commit(ctx)
+func (p *xmrProcessor) persistCryptoCache(ctx context.Context) {
+	lastHeight := int64(p.daemonEx.LastSyncedBlockHeight())
+	p.persistCryptoCacheHelper(ctx, db.CoinTypeXMR, lastHeight)
 }
 
 func (p *xmrProcessor) load(ctx context.Context) error {
@@ -330,11 +296,11 @@ func (p *xmrProcessor) load(ctx context.Context) error {
 			}
 		}()
 
-		p.persistCryptoCacheHelper(ctx)
+		p.persistCryptoCache(ctx)
 		for {
 			select {
 			case <-time.After(persist_cache_timeout):
-				go p.persistCryptoCacheHelper(ctx)
+				go p.persistCryptoCache(ctx)
 			case <-ctx.Done():
 				return
 			}
@@ -466,71 +432,6 @@ func (p *xmrProcessor) handleInvoicePbReq(ctx context.Context, req *dto.NewInvoi
 	return invoice, nil
 }
 
-// TODO: Make it shared
-func (p *xmrProcessor) releaseAddressHelper(ctx context.Context, invoice *db.Invoice) {
-	q, tx, err := util.InitDbQueriesWithTx(ctx, p.dbConnPool)
-	if err != nil {
-		p.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
-		return
-	}
-
-	if _, err := q.UpdateIsOccupiedByCryptoAddress(ctx, db.UpdateIsOccupiedByCryptoAddressParams{IsOccupied: false, Address: invoice.CryptoAddress}); err != nil {
-		tx.Rollback(ctx)
-		p.log.Err(err).Str("queryName", "UpdateIsOccupiedByCryptoAddress").Msg(util.DefaultFailedSqlQueryMsg)
-		return
-	}
-
-	tx.Commit(ctx)
-}
-
-func (p *xmrProcessor) expireInvoice(ctx context.Context, invoice *db.Invoice) {
-	if _, loaded := p.pendingInvoices.LoadAndDelete(invoice.CryptoAddress); !loaded {
-		return
-	}
-
-	q, tx, err := util.InitDbQueriesWithTx(ctx, p.dbConnPool)
-	if err != nil {
-		p.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
-		return
-	}
-
-	expiredInvoice, err := q.ExpireInvoiceById(ctx, invoice.ID)
-	if err != nil {
-		tx.Rollback(ctx)
-		p.log.Err(err).Str("queryName", "ExpireInvoiceById").Msg(util.DefaultFailedSqlQueryMsg)
-		return
-	}
-
-	tx.Commit(ctx)
-
-	go p.releaseAddressHelper(ctx, invoice)
-
-	p.invoiceCn <- expiredInvoice
-}
-
-func (p *xmrProcessor) handleInvoiceHelper(confirmedInvoiceCtx context.Context, invoice *db.Invoice) {
-	select {
-	case <-time.After(invoice.ExpiresAt.Time.Sub(time.Now().UTC())):
-		p.expireInvoice(confirmedInvoiceCtx, invoice)
-		return
-	case <-confirmedInvoiceCtx.Done():
-		return
-	}
-}
-func (p *xmrProcessor) handleInvoice(ctx context.Context, invoice db.Invoice) {
-	if _, ok := p.pendingInvoices.Load(invoice.CryptoAddress); ok {
-		return
-	}
-
-	confirmedInvoiceCtx, cancel := context.WithCancel(ctx)
-
-	invoicePtr := &atomic.Pointer[db.Invoice]{}
-	invoicePtr.Store(&invoice)
-	p.pendingInvoices.Store(invoice.CryptoAddress, pendingInvoice{invoice: invoicePtr, cancelTimeoutFunc: cancel})
-
-	go p.handleInvoiceHelper(confirmedInvoiceCtx, &invoice)
-}
-
 func newXmrProcessor(dbConnPool *pgxpool.Pool, invoiceCn chan<- db.Invoice, c *dto.DaemonsConfig, log *zerolog.Logger) (*xmrProcessor, error) {
 	u, err := url.Parse(c.Xmr.Url)
 	if err != nil {
@@ -552,13 +453,19 @@ func newXmrProcessor(dbConnPool *pgxpool.Pool, invoiceCn chan<- db.Invoice, c *d
 	}
 
 	return &xmrProcessor{
-			log:             log,
-			dbConnPool:      dbConnPool,
-			daemon:          d,
-			daemonEx:        listener.NewDaemonRpcClientExecutor(d, log),
-			network:         net,
-			invoiceCn:       invoiceCn,
-			pendingInvoices: new(util.SyncMapTypeSafe[string, pendingInvoice]),
+			baseCryptoProcessor: baseCryptoProcessor{
+				log:             log,
+				dbConnPool:      dbConnPool,
+				invoiceCn:       invoiceCn,
+				pendingInvoices: new(util.SyncMapTypeSafe[string, pendingInvoice]),
+			},
+			// log:             log,
+			// dbConnPool:      dbConnPool,
+			daemon:   d,
+			daemonEx: listener.NewDaemonRpcClientExecutor(d, log),
+			network:  net,
+			// invoiceCn:       invoiceCn,
+			// pendingInvoices: new(util.SyncMapTypeSafe[string, pendingInvoice]),
 		},
 		nil
 }
