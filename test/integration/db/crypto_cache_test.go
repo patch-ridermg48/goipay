@@ -1,4 +1,4 @@
-package test
+package db_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/chekist32/goipay/internal/db"
+	"github.com/chekist32/goipay/test"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -15,7 +16,7 @@ import (
 
 func TestFindCryptoCacheByCoin(t *testing.T) {
 	t.Run("Should Return Valid Crypto Cache", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -27,7 +28,7 @@ func TestFindCryptoCacheByCoin(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (no rows)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -40,7 +41,7 @@ func TestFindCryptoCacheByCoin(t *testing.T) {
 }
 
 func TestUpdateCryptoCacheByCoin(t *testing.T) {
-	runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+	test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 		ctx := context.Background()
 		q := db.New(tx)
 

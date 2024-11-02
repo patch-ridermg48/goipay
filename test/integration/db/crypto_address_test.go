@@ -1,4 +1,4 @@
-package test
+package db_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/chekist32/goipay/internal/db"
+	"github.com/chekist32/goipay/test"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -15,7 +16,7 @@ import (
 
 func TestCreateCryptoAddress(t *testing.T) {
 	t.Run("Should Return Valid Address", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -30,7 +31,7 @@ func TestCreateCryptoAddress(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (address dublication)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -56,7 +57,7 @@ func TestCreateCryptoAddress(t *testing.T) {
 
 func TestFindNonOccupiedCryptoAddressAndLockByUserIdAndCoin(t *testing.T) {
 	t.Run("Should Return Valid Address", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -79,7 +80,7 @@ func TestFindNonOccupiedCryptoAddressAndLockByUserIdAndCoin(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (no rows (coin))", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -99,7 +100,7 @@ func TestFindNonOccupiedCryptoAddressAndLockByUserIdAndCoin(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (no rows (userId))", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -124,7 +125,7 @@ func TestFindNonOccupiedCryptoAddressAndLockByUserIdAndCoin(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (no rows (occupied))", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -146,7 +147,7 @@ func TestFindNonOccupiedCryptoAddressAndLockByUserIdAndCoin(t *testing.T) {
 }
 
 func TestUpdateIsOccupiedByCryptoAddress(t *testing.T) {
-	runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+	test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 		ctx := context.Background()
 		q := db.New(tx)
 
@@ -194,7 +195,7 @@ func TestDeleteAllCryptoAddressByUserIdAndCoin(t *testing.T) {
 	}
 
 	t.Run("Should Delete 1 Address", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -208,7 +209,7 @@ func TestDeleteAllCryptoAddressByUserIdAndCoin(t *testing.T) {
 	})
 
 	t.Run("Should Delete 1 Address", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -222,7 +223,7 @@ func TestDeleteAllCryptoAddressByUserIdAndCoin(t *testing.T) {
 	})
 
 	t.Run("Should Delete 0 Addresses", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 

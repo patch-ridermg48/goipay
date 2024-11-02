@@ -1,4 +1,4 @@
-package test
+package db_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/chekist32/goipay/internal/db"
+	"github.com/chekist32/goipay/test"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -19,7 +20,7 @@ func createRandomXMRCryptoData(ctx context.Context, q *db.Queries) (db.XmrCrypto
 
 func TestCreateXMRCryptoData(t *testing.T) {
 	t.Run("Should Return Valid XMR Crypto Data", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -29,7 +30,7 @@ func TestCreateXMRCryptoData(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (non unique public spend key)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -44,7 +45,7 @@ func TestCreateXMRCryptoData(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (non unique private view key)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -62,7 +63,7 @@ func TestCreateXMRCryptoData(t *testing.T) {
 
 func TestCreateCryptoData(t *testing.T) {
 	t.Run("Should Return SQL Error (invalid userId)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -84,7 +85,7 @@ func TestCreateCryptoData(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (invalid xmrId)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -106,7 +107,7 @@ func TestCreateCryptoData(t *testing.T) {
 	})
 
 	t.Run("Should Return Valid Crypto Data", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -127,7 +128,7 @@ func TestCreateCryptoData(t *testing.T) {
 
 func TestFindCryptoDataByUserId(t *testing.T) {
 	t.Run("Should Return Valid Crypto Data", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -151,7 +152,7 @@ func TestFindCryptoDataByUserId(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (no rows)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -180,7 +181,7 @@ func TestFindCryptoDataByUserId(t *testing.T) {
 
 func TestFindKeysAndLockXMRCryptoDataById(t *testing.T) {
 	t.Run("Should Return Proper XMR Crypto Data", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -205,7 +206,7 @@ func TestFindKeysAndLockXMRCryptoDataById(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (no rows)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -232,7 +233,7 @@ func TestFindKeysAndLockXMRCryptoDataById(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (no rows)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -262,7 +263,7 @@ func TestFindKeysAndLockXMRCryptoDataById(t *testing.T) {
 
 func TestFindIndicesAndLockXMRCryptoDataById(t *testing.T) {
 	t.Run("Should Return Valid XMR Indices", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -279,7 +280,7 @@ func TestFindIndicesAndLockXMRCryptoDataById(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (no rows)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -300,7 +301,7 @@ func TestFindIndicesAndLockXMRCryptoDataById(t *testing.T) {
 }
 
 func TestUpdateIndicesXMRCryptoDataById(t *testing.T) {
-	runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+	test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 		ctx := context.Background()
 		q := db.New(tx)
 
@@ -315,7 +316,7 @@ func TestUpdateIndicesXMRCryptoDataById(t *testing.T) {
 }
 
 func TestUpdateKeysXMRCryptoDataById(t *testing.T) {
-	runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+	test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 		ctx := context.Background()
 		q := db.New(tx)
 
@@ -331,7 +332,7 @@ func TestUpdateKeysXMRCryptoDataById(t *testing.T) {
 
 func TestSetXMRCryptoDataByUserId(t *testing.T) {
 	t.Run("Should Return Valid Crypto Data", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -358,7 +359,7 @@ func TestSetXMRCryptoDataByUserId(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (invalid xmr_id)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
