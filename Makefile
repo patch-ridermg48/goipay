@@ -30,4 +30,4 @@ build-debug:
 	go build -gcflags=all="-N -l" -o ./bin/server $(cmdServerDir)/main.go
 
 coverage:
-	go test -coverprofile=.coverage.out -coverpkg=./... ./... && go tool cover -html=.coverage.out -o .coverage.html
+	go test -coverprofile=.coverage.out -coverpkg=./internal/handler,./internal/listener,./internal/processor,./internal/util,./internal/db ./... && go tool cover -html=.coverage.out -o .coverage.html
