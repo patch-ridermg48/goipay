@@ -30,6 +30,7 @@ const (
 type UserServiceClient interface {
 	RegisterUser(ctx context.Context, in *RegisterUserRequest, opts ...grpc.CallOption) (*RegisterUserResponse, error)
 	UpdateCryptoKeys(ctx context.Context, in *UpdateCryptoKeysRequest, opts ...grpc.CallOption) (*UpdateCryptoKeysResponse, error)
+	// Deprecated: Do not use.
 	GetCryptoKeys(ctx context.Context, in *GetCryptoKeysRequest, opts ...grpc.CallOption) (*GetCryptoKeysResponse, error)
 }
 
@@ -61,6 +62,7 @@ func (c *userServiceClient) UpdateCryptoKeys(ctx context.Context, in *UpdateCryp
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *userServiceClient) GetCryptoKeys(ctx context.Context, in *GetCryptoKeysRequest, opts ...grpc.CallOption) (*GetCryptoKeysResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetCryptoKeysResponse)
@@ -77,6 +79,7 @@ func (c *userServiceClient) GetCryptoKeys(ctx context.Context, in *GetCryptoKeys
 type UserServiceServer interface {
 	RegisterUser(context.Context, *RegisterUserRequest) (*RegisterUserResponse, error)
 	UpdateCryptoKeys(context.Context, *UpdateCryptoKeysRequest) (*UpdateCryptoKeysResponse, error)
+	// Deprecated: Do not use.
 	GetCryptoKeys(context.Context, *GetCryptoKeysRequest) (*GetCryptoKeysResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }

@@ -29,6 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type InvoiceServiceClient interface {
 	CreateInvoice(ctx context.Context, in *CreateInvoiceRequest, opts ...grpc.CallOption) (*CreateInvoiceResponse, error)
+	// Deprecated: Do not use.
 	GetInvoices(ctx context.Context, in *GetInvoicesRequest, opts ...grpc.CallOption) (*GetInvoicesResponse, error)
 	InvoiceStatusStream(ctx context.Context, in *InvoiceStatusStreamRequest, opts ...grpc.CallOption) (InvoiceService_InvoiceStatusStreamClient, error)
 }
@@ -51,6 +52,7 @@ func (c *invoiceServiceClient) CreateInvoice(ctx context.Context, in *CreateInvo
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *invoiceServiceClient) GetInvoices(ctx context.Context, in *GetInvoicesRequest, opts ...grpc.CallOption) (*GetInvoicesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetInvoicesResponse)
@@ -99,6 +101,7 @@ func (x *invoiceServiceInvoiceStatusStreamClient) Recv() (*InvoiceStatusStreamRe
 // for forward compatibility
 type InvoiceServiceServer interface {
 	CreateInvoice(context.Context, *CreateInvoiceRequest) (*CreateInvoiceResponse, error)
+	// Deprecated: Do not use.
 	GetInvoices(context.Context, *GetInvoicesRequest) (*GetInvoicesResponse, error)
 	InvoiceStatusStream(*InvoiceStatusStreamRequest, InvoiceService_InvoiceStatusStreamServer) error
 	mustEmbedUnimplementedInvoiceServiceServer()
