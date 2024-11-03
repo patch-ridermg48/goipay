@@ -4,19 +4,20 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"testing"
+	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/docker/go-connections/nat"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func spinUpPostgresContainer() (testcontainers.Container, func(ctx context.Context), error) {
+func SpinUpPostgresContainer(pathToMigration string) (testcontainers.Container, func(ctx context.Context), error) {
 	ctx := context.Background()
 
 	net, err := network.New(ctx)
@@ -71,7 +72,8 @@ func spinUpPostgresContainer() (testcontainers.Container, func(ctx context.Conte
 		Mounts: testcontainers.ContainerMounts{
 			{
 				Source: testcontainers.GenericBindMountSource{
-					HostPath: fmt.Sprintf("%v/../../../sql/migrations", os.Getenv("PWD")),
+					// HostPath: fmt.Sprintf("%v/../../../sql/migrations", os.Getenv("PWD")),
+					HostPath: pathToMigration,
 				},
 				Target: testcontainers.ContainerMountTarget("/migrations"),
 			},
@@ -97,7 +99,7 @@ func spinUpPostgresContainer() (testcontainers.Container, func(ctx context.Conte
 	return postgres, closeHandler, nil
 }
 
-func runInTransaction(t *testing.T, db *pgxpool.Pool, testFunc func(*testing.T, pgx.Tx)) {
+func RunInTransaction(t *testing.T, db *pgxpool.Pool, testFunc func(*testing.T, pgx.Tx)) {
 	ctx := context.Background()
 
 	tx, err := db.Begin(ctx)
@@ -106,4 +108,44 @@ func runInTransaction(t *testing.T, db *pgxpool.Pool, testFunc func(*testing.T, 
 	}
 	defer tx.Rollback(ctx)
 	testFunc(t, tx)
+}
+
+func SpinUpPostgresContainerAndGetPgxpool(pathToMigration string) (*pgxpool.Pool, testcontainers.Container, func(ctx context.Context)) {
+	ctx := context.Background()
+
+	postgres, close, err := SpinUpPostgresContainer(pathToMigration)
+	if err != nil {
+		close(ctx)
+		log.Fatal(err)
+	}
+
+	dbUser := "postgres"
+	dbPass := dbUser
+	dbName := dbUser
+	dbHost := "localhost"
+	dbPort, err := postgres.MappedPort(ctx, "5432/tcp")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dbUrl := fmt.Sprintf("postgresql://%v:%v@%v:%v/%v", dbUser, dbPass, dbHost, dbPort.Port(), dbName)
+	connPool, err := pgxpool.New(ctx, dbUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return connPool, postgres, close
+}
+
+func GetValueFromCnOrLogFatalWithTimeout[T any](cn <-chan T, timeout time.Duration, errorMsg string) T {
+	var val T
+
+	select {
+	case val = <-cn:
+		return val
+	case <-time.After(timeout):
+		log.Fatal(errorMsg)
+	}
+
+	return val
 }

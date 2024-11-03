@@ -93,38 +93,3 @@ func spinUpPostgresContainer() (testcontainers.Container, func(ctx context.Conte
 
 	return postgres, closeHandler, nil
 }
-
-func spinUpMoneroWalletRpcContainer() (testcontainers.Container, func(ctx context.Context), error) {
-	ctx := context.Background()
-
-	moneroRpcWalletReq := testcontainers.ContainerRequest{
-		Image:        "chekist32/monero-wallet-rpc:0.18.3.4",
-		ExposedPorts: []string{"38083/tcp"},
-		Mounts: testcontainers.ContainerMounts{
-			{
-				Source: testcontainers.GenericBindMountSource{
-					HostPath: fmt.Sprintf("%v/../resources/spend_wallet", os.Getenv("PWD")),
-				},
-				Target: testcontainers.ContainerMountTarget("/monero/wallet"),
-			},
-		},
-		Cmd: []string{
-			"--stagenet",
-			"--daemon-address=stagenet.community.rino.io:38081",
-			"--trusted-daemon",
-			"--rpc-bind-port=38083",
-			"--disable-rpc-login",
-			"--wallet-dir=/monero/wallet",
-		},
-		WaitingFor: wait.ForLog("Starting wallet RPC server"),
-	}
-	moneroRpcWallet, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: moneroRpcWalletReq,
-		Started:          true,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return moneroRpcWallet, func(ctx context.Context) { moneroRpcWallet.Terminate(ctx) }, nil
-}

@@ -1,13 +1,13 @@
-package test
+package db_test
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"testing"
 
 	"github.com/chekist32/goipay/internal/db"
+	"github.com/chekist32/goipay/test"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -17,29 +17,9 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	ctx := context.Background()
-
-	postgres, close, err := spinUpPostgresContainer()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer close(ctx)
-
-	dbUser := "postgres"
-	dbPass := dbUser
-	dbName := dbUser
-	dbHost := "localhost"
-	dbPort, err := postgres.MappedPort(ctx, "5432/tcp")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	dbUrl := fmt.Sprintf("postgresql://%v:%v@%v:%v/%v", dbUser, dbPass, dbHost, dbPort.Port(), dbName)
-	connPool, err := pgxpool.New(ctx, dbUrl)
-	if err != nil {
-		log.Fatal(err)
-	}
-	dbConnPool = connPool
+	dbConn, _, close := test.SpinUpPostgresContainerAndGetPgxpool(fmt.Sprintf("%v/../../../sql/migrations", os.Getenv("PWD")))
+	dbConnPool = dbConn
+	defer close(context.Background())
 
 	os.Exit(m.Run())
 }

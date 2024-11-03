@@ -1,4 +1,4 @@
-package test
+package db_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/chekist32/goipay/internal/db"
+	"github.com/chekist32/goipay/test"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -33,7 +34,7 @@ func createRandTestInvoice(ctx context.Context, q *db.Queries, userId pgtype.UUI
 
 func TestCreateInvoice(t *testing.T) {
 	t.Run("Should Create Invoice (with existing userId)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -54,7 +55,7 @@ func TestCreateInvoice(t *testing.T) {
 	})
 
 	t.Run("Should Return SQL Error (no such userId)", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -74,7 +75,7 @@ func TestCreateInvoice(t *testing.T) {
 
 func TestFindAllInvoicesByIds(t *testing.T) {
 	t.Run("Should Return 2 Invoices", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -108,7 +109,7 @@ func TestFindAllInvoicesByIds(t *testing.T) {
 	})
 
 	t.Run("Should Return 0 Invoices", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -145,7 +146,7 @@ func TestFindAllInvoicesByIds(t *testing.T) {
 }
 
 func TestConfirmInvoiceById(t *testing.T) {
-	runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+	test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 		ctx := context.Background()
 		q := db.New(tx)
 
@@ -167,7 +168,7 @@ func TestConfirmInvoiceById(t *testing.T) {
 }
 
 func TestExpireInvoiceById(t *testing.T) {
-	runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+	test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 		ctx := context.Background()
 		q := db.New(tx)
 
@@ -188,7 +189,7 @@ func TestExpireInvoiceById(t *testing.T) {
 }
 
 func TestConfirmInvoiceStatusMempoolById(t *testing.T) {
-	runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+	test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 		ctx := context.Background()
 		q := db.New(tx)
 
@@ -224,7 +225,7 @@ func TestConfirmInvoiceStatusMempoolById(t *testing.T) {
 
 func TestFindAllPendingInvoices(t *testing.T) {
 	t.Run("Should Return 2 Invoices", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -269,7 +270,7 @@ func TestFindAllPendingInvoices(t *testing.T) {
 	})
 
 	t.Run("Should Return 1 Invoices", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -324,7 +325,7 @@ func TestFindAllPendingInvoices(t *testing.T) {
 	})
 
 	t.Run("Should Return 0 Invoices", func(t *testing.T) {
-		runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+		test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 			ctx := context.Background()
 			q := db.New(tx)
 
@@ -367,7 +368,7 @@ func TestFindAllPendingInvoices(t *testing.T) {
 }
 
 func TestShiftExpiresAtForNonConfirmedInvoices(t *testing.T) {
-	runInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
+	test.RunInTransaction(t, dbConnPool, func(t *testing.T, tx pgx.Tx) {
 		ctx := context.Background()
 		q := db.New(tx)
 

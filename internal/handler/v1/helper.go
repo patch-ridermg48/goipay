@@ -15,7 +15,7 @@ func checkIfUserExistsString(ctx context.Context, log *zerolog.Logger, q *db.Que
 	userIdUUID, err := util.StringToPgUUID(userId)
 	if err != nil {
 		log.Err(err).Msg("An error occurred while converting the string to the PostgreSQL UUID data type.")
-		return status.Error(codes.InvalidArgument, "Invalid userId")
+		return status.Error(codes.InvalidArgument, util.InvalidUserIdInvalidUUIDMsg)
 	}
 
 	return checkIfUserExistsUUID(ctx, log, q, *userIdUUID)
@@ -29,7 +29,7 @@ func checkIfUserExistsUUID(ctx context.Context, log *zerolog.Logger, q *db.Queri
 	}
 
 	if !res {
-		return status.Error(codes.InvalidArgument, "Invalid userId")
+		return status.Error(codes.InvalidArgument, util.InvalidUserIdUserExistsMsg)
 	}
 
 	return nil
