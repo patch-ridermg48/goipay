@@ -13,6 +13,7 @@ import (
 	"github.com/chekist32/go-monero/wallet"
 	pb_v1 "github.com/chekist32/goipay/e2e/internal/pb/v1"
 	"github.com/docker/go-connections/nat"
+	"github.com/icholy/digest"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
@@ -94,11 +95,6 @@ func TestSimpleRegisterUser(t *testing.T) {
 		log.Err(err).Msg("")
 		assert.FailNow(t, "")
 	}
-	moneroWalletRpc, moneroWalletRpcClean, err := spinUpMoneroWalletRpcContainer()
-	if err != nil {
-		log.Err(err).Msg("")
-		assert.FailNow(t, "")
-	}
 
 	goipayPort, err := goipay.MappedPort(ctx, "3000/tcp")
 	if err != nil {
@@ -115,16 +111,14 @@ func TestSimpleRegisterUser(t *testing.T) {
 	userClient := pb_v1.NewUserServiceClient(conn)
 	invoiceClient := pb_v1.NewInvoiceServiceClient(conn)
 
-	moneroWalletRpcPort, err := moneroWalletRpc.MappedPort(ctx, "38083/tcp")
-	if err != nil {
-		log.Err(err).Msg("")
-		assert.FailNow(t, "")
-	}
-
 	xmrWallet := wallet.New(wallet.Config{
-		Address: fmt.Sprintf("http://localhost:%v", moneroWalletRpcPort.Port()),
+		Address: os.Getenv("XMR_WALLET_RPC_ADDRESS"),
+		Transport: &digest.Transport{
+			Username: os.Getenv("XMR_WALLET_RPC_USER"),
+			Password: os.Getenv("XMR_WALLET_RPC_PASS"),
+		},
 	})
-	if err := xmrWallet.OpenWallet(&wallet.RequestOpenWallet{Filename: "goipay_test", Password: os.Getenv("XMR_SPEND_WALLET_PASSWORD")}); err != nil {
+	if err := xmrWallet.OpenWallet(&wallet.RequestOpenWallet{Filename: os.Getenv("XMR_SPEND_WALLET_FILENAME"), Password: os.Getenv("XMR_SPEND_WALLET_PASSWORD")}); err != nil {
 		log.Err(err).Msg("")
 		assert.FailNow(t, "")
 	}
@@ -132,7 +126,7 @@ func TestSimpleRegisterUser(t *testing.T) {
 	t.Cleanup(func() {
 		goipayClean(ctx)
 		xmrWallet.CloseWallet()
-		moneroWalletRpcClean(ctx)
+		// moneroWalletRpcClean(ctx)
 		cancel()
 	})
 
