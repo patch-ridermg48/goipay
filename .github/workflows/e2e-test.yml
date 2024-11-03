@@ -28,10 +28,10 @@ jobs:
 
       - name: Run E2E Golang Tests
         env:
-          XMR_SPEND_WALLET_PASSWORD: ${{ secret.XMR_SPEND_WALLET_PASSWORD }}
-          XMR_WALLET_RPC_ADDRESS: ${{ secret.XMR_WALLET_RPC_ADDRESS }}
-          XMR_WALLET_RPC_USER: ${{ secret.XMR_WALLET_RPC_USER }}
-          XMR_WALLET_RPC_PASS: ${{ secret.XMR_WALLET_RPC_PASS }}
+          XMR_SPEND_WALLET_PASSWORD: ${{ secrets.XMR_SPEND_WALLET_PASSWORD }}
+          XMR_WALLET_RPC_ADDRESS: ${{ secrets.XMR_WALLET_RPC_ADDRESS }}
+          XMR_WALLET_RPC_USER: ${{ secrets.XMR_WALLET_RPC_USER }}
+          XMR_WALLET_RPC_PASS: ${{ secrets.XMR_WALLET_RPC_PASS }}
         run: | 
           cd ./test/e2e/golang
           go test ./test
