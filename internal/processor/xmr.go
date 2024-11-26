@@ -428,6 +428,9 @@ func (p *xmrProcessor) handleInvoicePbReq(ctx context.Context, req *dto.NewInvoi
 	}
 
 	p.handleInvoice(ctx, *invoice)
+	go func() {
+		p.invoiceCn <- *invoice
+	}()
 
 	return invoice, nil
 }
