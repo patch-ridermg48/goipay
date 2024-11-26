@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chekist32/go-monero-rpc-client/util"
+	"github.com/chekist32/go-monero/utils"
 	"github.com/chekist32/go-monero/wallet"
 	pb_v1 "github.com/chekist32/goipay/e2e/internal/pb/v1"
 	"github.com/docker/go-connections/nat"
@@ -197,7 +197,7 @@ func TestSimpleRegisterUser(t *testing.T) {
 		Priority: wallet.PriorityNormal,
 		RingSize: 16,
 		Destinations: []*wallet.Destination{
-			{Amount: util.Float64ToXMR(createInvoiceReq.Amount + 0.001), Address: res3.Address},
+			{Amount: utils.Float64ToXMR(createInvoiceReq.Amount + 0.001), Address: res3.Address},
 		},
 	})
 	if err != nil {

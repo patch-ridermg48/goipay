@@ -1,4 +1,4 @@
-dbConnStr = "postgresql://postgres:postgres@localhost:5432/crypto_gateway_test"
+dbConnStr = "postgresql://${DATABASE_USER}:${DATABASE_PASS}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}"
 migrationsDir = ./sql/migrations
 sqlcFile = ./sql/sqlc.yaml
 
