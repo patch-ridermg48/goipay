@@ -38,7 +38,6 @@ func (i *InvoiceGrpc) CreateInvoice(ctx context.Context, req *pb_v1.CreateInvoic
 		return nil, status.Error(codes.InvalidArgument, "Invoice amount can't be below 0.")
 	}
 	if err := checkIfUserExistsString(ctx, i.log, q, req.UserId); err != nil {
-		// tx.Rollback(ctx)
 		return nil, err
 	}
 
@@ -48,8 +47,6 @@ func (i *InvoiceGrpc) CreateInvoice(ctx context.Context, req *pb_v1.CreateInvoic
 		i.log.Err(err).Msg(errMsg)
 		return nil, status.Error(codes.Internal, errMsg)
 	}
-
-	// tx.Commit(ctx)
 
 	return &pb_v1.CreateInvoiceResponse{PaymentId: util.PgUUIDToString(invoice.ID), Address: invoice.CryptoAddress}, nil
 }
@@ -72,7 +69,6 @@ func (i *InvoiceGrpc) GetInvoices(ctx context.Context, req *pb_v1.GetInvoicesReq
 	for j := 0; j < len(req.PaymentIds); j++ {
 		id, err := util.StringToPgUUID(req.PaymentIds[j])
 		if err != nil {
-			// tx.Rollback(ctx)
 			i.log.Err(err).Msg("An error occurred while converting the string to the PostgreSQL UUID data type.")
 			return nil, status.Error(codes.Internal, "Invalid paymentId (invalid UUID).")
 		}
@@ -81,7 +77,6 @@ func (i *InvoiceGrpc) GetInvoices(ctx context.Context, req *pb_v1.GetInvoicesReq
 
 	invoices, err := q.FindAllInvoicesByIds(ctx, ids)
 	if err != nil {
-		// tx.Rollback(ctx)
 		i.log.Err(err).Str("queryName", "FindAllInvoicesByIds").Msg(util.DefaultFailedSqlQueryMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 	}
@@ -90,8 +85,6 @@ func (i *InvoiceGrpc) GetInvoices(ctx context.Context, req *pb_v1.GetInvoicesReq
 	for i := 0; i < len(invoices); i++ {
 		retIncoices = append(retIncoices, util.DbInvoiceToPbInvoice(&invoices[i]))
 	}
-
-	// tx.Commit(ctx)
 
 	return &pb_v1.GetInvoicesResponse{Invoices: retIncoices}, nil
 }

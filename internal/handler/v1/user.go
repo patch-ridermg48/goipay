@@ -21,7 +21,7 @@ type UserGrpc struct {
 }
 
 func (u *UserGrpc) createUser(ctx context.Context, q *db.Queries, in *pb_v1.RegisterUserRequest) (*pgtype.UUID, error) {
-	// With userId in the request
+	// Without userId in the request
 	if in.UserId == nil {
 		userId, err := q.CreateUser(ctx)
 		if err != nil {
@@ -32,7 +32,7 @@ func (u *UserGrpc) createUser(ctx context.Context, q *db.Queries, in *pb_v1.Regi
 		return &userId, err
 	}
 
-	// Without userId in the request
+	// With userId in the request
 	userIdReq, err := util.StringToPgUUID(*in.UserId)
 	if err != nil {
 		u.log.Err(err).Msg(util.InvalidUserIdInvalidUUIDMsg)
@@ -64,18 +64,14 @@ func (u *UserGrpc) RegisterUser(ctx context.Context, in *pb_v1.RegisterUserReque
 
 	userId, err := u.createUser(ctx, q, in)
 	if err != nil {
-		// tx.Rollback(ctx)
 		return nil, err
 	}
 
 	_, err = q.CreateCryptoData(ctx, db.CreateCryptoDataParams{UserID: *userId})
 	if err != nil {
-		// tx.Rollback(ctx)
 		u.log.Err(err).Str("queryName", "CreateUser").Msg(util.DefaultFailedSqlQueryMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 	}
-
-	// tx.Commit(ctx)
 
 	return &pb_v1.RegisterUserResponse{UserId: util.PgUUIDToString(*userId)}, nil
 }
@@ -135,32 +131,26 @@ func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoK
 
 	userId, err := util.StringToPgUUID(in.UserId)
 	if err != nil {
-		// tx.Rollback(ctx)
 		u.log.Err(err).Msg("An error occurred while converting the string to the PostgreSQL UUID data type.")
 		return nil, status.Error(codes.InvalidArgument, util.InvalidUserIdInvalidUUIDMsg)
 	}
 
 	if err := checkIfUserExistsUUID(ctx, u.log, q, *userId); err != nil {
-		// tx.Rollback(ctx)
 		return nil, err
 	}
 
 	cryptData, err := q.FindCryptoDataByUserId(ctx, *userId)
 	if err != nil {
-		// tx.Rollback(ctx)
 		u.log.Err(err).Str("queryName", "FindCryptoDataByUserId").Msg(util.DefaultFailedSqlQueryMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 	}
 
 	if in.XmrReq != nil {
 		if err := u.handleXmrCryptoDataUpdate(ctx, q, in.XmrReq, &cryptData); err != nil {
-			// tx.Rollback(ctx)
 			u.log.Err(err).Msg("")
 			return nil, err
 		}
 	}
-
-	// tx.Commit(ctx)
 
 	return &pb_v1.UpdateCryptoKeysResponse{}, nil
 }
@@ -181,24 +171,19 @@ func (u *UserGrpc) GetCryptoKeys(ctx context.Context, in *pb_v1.GetCryptoKeysReq
 
 	userId, err := util.StringToPgUUID(in.UserId)
 	if err != nil {
-		// tx.Rollback(ctx)
 		u.log.Err(err).Msg("An error occurred while converting the string to the PostgreSQL UUID data type.")
 		return nil, status.Error(codes.InvalidArgument, util.InvalidUserIdInvalidUUIDMsg)
 	}
 
 	if err := checkIfUserExistsUUID(ctx, u.log, q, *userId); err != nil {
-		// tx.Rollback(ctx)
 		return nil, err
 	}
 
 	cryptoKeys, err := q.FindCryptoKeysByUserId(ctx, *userId)
 	if err != nil {
-		// tx.Rollback(ctx)
 		u.log.Err(err).Str("queryName", "FindCryptoKeysByUserId").Msg(util.DefaultFailedSqlQueryMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 	}
-
-	// tx.Commit(ctx)
 
 	return &pb_v1.GetCryptoKeysResponse{
 		XmrKeys: &pb_v1.XmrKeys{
