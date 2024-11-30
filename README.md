@@ -20,28 +20,29 @@ A lightweight crypto payment processor microservice, written in Golang, designed
 #### Docker
 - Clone the repo
   ```sh
-    https://github.com/chekist32/goipay.git
+  https://github.com/chekist32/goipay.git
   ```
 - Inside the root dir create and populate ```.env``` file on the base of ```.env.example``` file
-  ```sh
-    # Can be either 'prod' or 'dev'.
-    # In 'dev' mode, a reflection server is established.
-    MODE=dev
+  ```ini
+  # Can be either 'prod' or 'dev'.
+  # In 'dev' mode, a reflection server is established.
+  MODE=dev
 
-    SERVER_HOST=localhost
-    SERVER_PORT=3000
+  SERVER_HOST=localhost
+  SERVER_PORT=3000
 
-    DATABASE_HOST=localhost
-    DATABASE_PORT=5432
-    DATABASE_USER=postgres
-    DATABASE_PASS=postgres
-    DATABASE_NAME=crypto_gateway_test
+  # As for now, only PostgreSQL is supported
+  DATABASE_HOST=localhost
+  DATABASE_PORT=54321
+  DATABASE_USER=postgres
+  DATABASE_PASS=postgres
+  DATABASE_NAME=goipay_db
 
-    XMR_DAEMON_URL=http://node.monerodevs.org:38089
-    XMR_DAEMON_USER=
-    XMR_DAEMON_PASS=
+  XMR_DAEMON_URL=http://node.monerodevs.org:38089
+  XMR_DAEMON_USER=
+  XMR_DAEMON_PASS=
   ```
 - Inside the root dir you can find an example ```docker-compose.yml``` file. For testing purposes can be run without editing.
   ```sh
-    docker compose up
+  docker compose up
   ```
