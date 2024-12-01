@@ -1,7 +1,12 @@
 # GoiPay
 
 <div align="center">
-<img src="https://raw.githubusercontent.com/goipay/goipay.github.io/refs/heads/master/static/img/goipay-logo-with-name.svg" alt="Logo" width="400" height="100">
+  <img src="https://raw.githubusercontent.com/goipay/goipay.github.io/refs/heads/master/static/img/goipay-logo-with-name.svg" alt="Logo" width="400" height="100">
+
+  ![Build Status](https://img.shields.io/github/actions/workflow/status/goipay/goipay/cd.yml)
+  ![Version](https://img.shields.io/github/v/release/goipay/goipay)
+  ![Docker Pulls](https://img.shields.io/docker/pulls/chekist32/goipay)
+  ![License](https://img.shields.io/github/license/goipay/goipay)
 </div>
 
 ## Description
@@ -20,20 +25,20 @@ A lightweight crypto payment processor microservice, written in Golang, designed
 #### Docker
 - Clone the repo
   ```sh
-  https://github.com/chekist32/goipay.git
+  git clone https://github.com/goipay/goipay.git
   ```
-- Inside the root dir create and populate ```.env``` file on the base of ```.env.example``` file
+- Inside the root dir create and populate ```.env``` file on the base of ```.env.docker``` file
   ```ini
   # Can be either 'prod' or 'dev'.
   # In 'dev' mode, a reflection server is established.
   MODE=dev
 
-  SERVER_HOST=localhost
+  SERVER_HOST=0.0.0.0
   SERVER_PORT=3000
 
   # As for now, only PostgreSQL is supported
-  DATABASE_HOST=localhost
-  DATABASE_PORT=54321
+  DATABASE_HOST=db
+  DATABASE_PORT=5432
   DATABASE_USER=postgres
   DATABASE_PASS=postgres
   DATABASE_NAME=goipay_db
@@ -46,3 +51,13 @@ A lightweight crypto payment processor microservice, written in Golang, designed
   ```sh
   docker compose up
   ```
+
+## Usage
+
+- Get a quick overview of how GoiPay works by watching this [simple showcase video](https://youtu.be/b6TJBiHKJXE?feature=shared).
+- Check out an [example project](https://github.com/goipay/example) to see GoiPay in action.
+- For detailed information on using GoiPay's API, refer to the [API Reference](https://goipay.github.io/docs/api/grpc).
+
+## Use cases
+
+GoiPay is designed as a microservice that can be integrated into larger projects. If you need a simple, lightweight solution for just generating and processing crypto invoices, GoiPay is the perfect choice.
