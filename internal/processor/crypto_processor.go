@@ -54,7 +54,9 @@ func (b *baseCryptoProcessor) broadcastUpdatedInvoice(ctx context.Context, invoi
 	go func() {
 		select {
 		case b.invoiceCn <- *invoice:
+			return
 		case <-timeoutCtx.Done():
+			return
 		}
 	}()
 }
