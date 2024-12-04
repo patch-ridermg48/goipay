@@ -37,18 +37,14 @@ func (b *baseCryptoProcessor) releaseAddressHelper(ctx context.Context, invoice 
 		b.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			err = tx.Commit(ctx)
-		}
-	}()
+	defer tx.Rollback(ctx)
 
 	if _, err := q.UpdateIsOccupiedByCryptoAddress(ctx, db.UpdateIsOccupiedByCryptoAddressParams{IsOccupied: false, Address: invoice.CryptoAddress}); err != nil {
 		b.log.Err(err).Str("queryName", "UpdateIsOccupiedByCryptoAddress").Msg(util.DefaultFailedSqlQueryMsg)
 		return
 	}
+
+	tx.Commit(ctx)
 }
 
 func (b *baseCryptoProcessor) broadcastUpdatedInvoice(ctx context.Context, invoice *db.Invoice) {
@@ -73,13 +69,7 @@ func (b *baseCryptoProcessor) expireInvoice(ctx context.Context, invoice *db.Inv
 		b.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			err = tx.Commit(ctx)
-		}
-	}()
+	defer tx.Rollback(ctx)
 
 	expiredInvoice, err := q.ExpireInvoiceById(ctx, invoice.ID)
 	if err != nil {
@@ -90,6 +80,8 @@ func (b *baseCryptoProcessor) expireInvoice(ctx context.Context, invoice *db.Inv
 	go b.releaseAddressHelper(ctx, invoice)
 
 	b.invoiceCn <- expiredInvoice
+
+	tx.Commit(ctx)
 }
 
 func (b *baseCryptoProcessor) persistCryptoCacheHelper(ctx context.Context, coin db.CoinType, lastBlockHeight int64) {
@@ -98,13 +90,7 @@ func (b *baseCryptoProcessor) persistCryptoCacheHelper(ctx context.Context, coin
 		b.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			err = tx.Commit(ctx)
-		}
-	}()
+	defer tx.Rollback(ctx)
 
 	var height pgtype.Int8
 	if err := height.Scan(lastBlockHeight); err != nil {
@@ -116,6 +102,8 @@ func (b *baseCryptoProcessor) persistCryptoCacheHelper(ctx context.Context, coin
 		b.log.Err(err).Str("queryName", "UpdateCryptoCacheByCoin").Msg(util.DefaultFailedSqlQueryMsg)
 		return
 	}
+
+	tx.Commit(ctx)
 }
 
 func (b *baseCryptoProcessor) handleInvoiceHelper(confirmedInvoiceCtx context.Context, invoice *db.Invoice) {
@@ -147,19 +135,15 @@ func (b *baseCryptoProcessor) confirmInvoice(ctx context.Context, invoice *db.In
 		b.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return nil, err
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			err = tx.Commit(ctx)
-		}
-	}()
+	defer tx.Rollback(ctx)
 
 	confirmedInvoice, err := q.ConfirmInvoiceById(ctx, invoice.ID)
 	if err != nil {
 		b.log.Err(err).Str("queryName", "ConfirmInvoiceById").Msg(util.DefaultFailedSqlQueryMsg)
 		return nil, err
 	}
+
+	tx.Commit(ctx)
 
 	return &confirmedInvoice, nil
 }
