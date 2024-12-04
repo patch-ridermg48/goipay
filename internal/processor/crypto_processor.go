@@ -51,6 +51,18 @@ func (b *baseCryptoProcessor) releaseAddressHelper(ctx context.Context, invoice 
 	}
 }
 
+func (b *baseCryptoProcessor) broadcastUpdatedInvoice(ctx context.Context, invoice *db.Invoice) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	go func() {
+		select {
+		case b.invoiceCn <- *invoice:
+		case <-timeoutCtx.Done():
+		}
+	}()
+}
+
 func (b *baseCryptoProcessor) expireInvoice(ctx context.Context, invoice *db.Invoice) {
 	if _, loaded := b.pendingInvoices.LoadAndDelete(invoice.CryptoAddress); !loaded {
 		return

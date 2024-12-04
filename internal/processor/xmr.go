@@ -173,7 +173,7 @@ func (p *xmrProcessor) verifyMoneroTxOnTxMempool(ctx context.Context, xmrTx inco
 
 			invoice = value.invoice.Load()
 			if invoice.Status != db.InvoiceStatusTypePENDING {
-				p.invoiceCn <- *invoice
+				p.broadcastUpdatedInvoice(ctx, invoice)
 				p.confirmInvoiceHelper(ctx, value)
 			}
 		}()
@@ -213,8 +213,7 @@ func (p *xmrProcessor) confirmInvoiceHelper(ctx context.Context, value pendingIn
 	}
 
 	go p.releaseAddressHelper(ctx, invoice)
-
-	p.invoiceCn <- *confirmedInvoice
+	p.broadcastUpdatedInvoice(ctx, confirmedInvoice)
 }
 
 func (p *xmrProcessor) verifyMoneroTxOnNewBlock(ctx context.Context) {
@@ -428,9 +427,7 @@ func (p *xmrProcessor) handleInvoicePbReq(ctx context.Context, req *dto.NewInvoi
 	}
 
 	p.handleInvoice(ctx, *invoice)
-	go func() {
-		p.invoiceCn <- *invoice
-	}()
+	p.broadcastUpdatedInvoice(ctx, invoice)
 
 	return invoice, nil
 }
