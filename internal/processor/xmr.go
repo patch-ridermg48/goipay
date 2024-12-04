@@ -462,13 +462,9 @@ func newXmrProcessor(dbConnPool *pgxpool.Pool, invoiceCn chan<- db.Invoice, c *d
 				invoiceCn:       invoiceCn,
 				pendingInvoices: new(util.SyncMapTypeSafe[string, pendingInvoice]),
 			},
-			// log:             log,
-			// dbConnPool:      dbConnPool,
 			daemon:   d,
 			daemonEx: listener.NewDaemonRpcClientExecutor(d, log),
 			network:  net,
-			// invoiceCn:       invoiceCn,
-			// pendingInvoices: new(util.SyncMapTypeSafe[string, pendingInvoice]),
 		},
 		nil
 }
