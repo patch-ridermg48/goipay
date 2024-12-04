@@ -1,5 +1,3 @@
-# GoiPay
-
 <div align="center">
   <img src="https://raw.githubusercontent.com/goipay/goipay.github.io/refs/heads/master/static/img/goipay-logo-with-name.svg" alt="Logo" width="400" height="100">
 
