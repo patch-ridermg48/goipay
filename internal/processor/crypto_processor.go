@@ -78,8 +78,7 @@ func (b *baseCryptoProcessor) expireInvoice(ctx context.Context, invoice *db.Inv
 	}
 
 	go b.releaseAddressHelper(ctx, invoice)
-
-	b.invoiceCn <- expiredInvoice
+	b.broadcastUpdatedInvoice(ctx, &expiredInvoice)
 
 	tx.Commit(ctx)
 }
