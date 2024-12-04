@@ -303,6 +303,56 @@ func (p *xmrProcessor) load(ctx context.Context) error {
 	return nil
 }
 
+func (p *xmrProcessor) generateNextXmrAddressHelper(ctx context.Context, q *db.Queries, userId pgtype.UUID) (db.CryptoAddress, error) {
+	var addr db.CryptoAddress
+
+	cd, err := q.FindCryptoDataByUserId(ctx, userId)
+	if err != nil {
+		return addr, err
+	}
+
+	indices, err := q.FindIndicesAndLockXMRCryptoDataById(ctx, cd.XmrID)
+	if err != nil {
+		return addr, err
+	}
+
+	keys, err := q.FindKeysAndLockXMRCryptoDataById(ctx, cd.XmrID)
+	if err != nil {
+		return addr, err
+	}
+
+	viewKey, err := utils.NewPrivateKey(keys.PrivViewKey)
+	if err != nil {
+		return addr, err
+	}
+
+	spendKey, err := utils.NewPublicKey(keys.PubSpendKey)
+	if err != nil {
+		return addr, err
+	}
+
+	indices.LastMinorIndex++
+	if indices.LastMinorIndex == 0 {
+		indices.LastMajorIndex++
+	}
+
+	subAddr, err := utils.GenerateSubaddress(viewKey, spendKey, uint32(indices.LastMajorIndex), uint32(indices.LastMinorIndex), p.network)
+	if err != nil {
+		return addr, err
+	}
+
+	addr, err = q.CreateCryptoAddress(ctx, db.CreateCryptoAddressParams{Address: subAddr.Address(), Coin: db.CoinTypeXMR, IsOccupied: true, UserID: userId})
+	if err != nil {
+		return addr, err
+	}
+
+	if _, err := q.UpdateIndicesXMRCryptoDataById(ctx, db.UpdateIndicesXMRCryptoDataByIdParams{ID: cd.XmrID, LastMajorIndex: indices.LastMajorIndex, LastMinorIndex: indices.LastMinorIndex}); err != nil {
+		return addr, err
+	}
+
+	return addr, nil
+}
+
 func (p *xmrProcessor) createInvoice(ctx context.Context, req *dto.NewInvoiceRequest) (*db.Invoice, error) {
 	q, tx, err := util.InitDbQueriesWithTx(ctx, p.dbConnPool)
 	if err != nil {
@@ -334,47 +384,8 @@ func (p *xmrProcessor) createInvoice(ctx context.Context, req *dto.NewInvoiceReq
 			return nil, err
 		}
 
-		cd, err := q.FindCryptoDataByUserId(ctx, userId)
+		addr, err = p.generateNextXmrAddressHelper(ctx, q, userId)
 		if err != nil {
-			return nil, err
-		}
-
-		indices, err := q.FindIndicesAndLockXMRCryptoDataById(ctx, cd.XmrID)
-		if err != nil {
-			return nil, err
-		}
-
-		keys, err := q.FindKeysAndLockXMRCryptoDataById(ctx, cd.XmrID)
-		if err != nil {
-			return nil, err
-		}
-
-		viewKey, err := utils.NewPrivateKey(keys.PrivViewKey)
-		if err != nil {
-			return nil, err
-		}
-
-		spendKey, err := utils.NewPublicKey(keys.PubSpendKey)
-		if err != nil {
-			return nil, err
-		}
-
-		indices.LastMinorIndex++
-		if indices.LastMinorIndex == 0 {
-			indices.LastMajorIndex++
-		}
-
-		subAddr, err := utils.GenerateSubaddress(viewKey, spendKey, uint32(indices.LastMajorIndex), uint32(indices.LastMinorIndex), p.network)
-		if err != nil {
-			return nil, err
-		}
-
-		addr, err = q.CreateCryptoAddress(ctx, db.CreateCryptoAddressParams{Address: subAddr.Address(), Coin: db.CoinTypeXMR, IsOccupied: true, UserID: userId})
-		if err != nil {
-			return nil, err
-		}
-
-		if _, err := q.UpdateIndicesXMRCryptoDataById(ctx, db.UpdateIndicesXMRCryptoDataByIdParams{ID: cd.XmrID, LastMajorIndex: indices.LastMajorIndex, LastMinorIndex: indices.LastMinorIndex}); err != nil {
 			return nil, err
 		}
 	}
