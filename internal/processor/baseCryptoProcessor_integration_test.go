@@ -37,6 +37,53 @@ func createNewTestBaseCryptoProcessor() (chan db.Invoice, *baseCryptoProcessor, 
 		close
 }
 
+func TestBroadcastInvoice(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Should Receive The Invoice", func(t *testing.T) {
+		ctx := context.Background()
+
+		invoiceCn, p, _, close := createNewTestBaseCryptoProcessor()
+		defer close(ctx)
+
+		q := db.New(p.dbConnPool)
+		userId, err := q.CreateUser(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		expectedAddr, err := q.CreateCryptoAddress(ctx, db.CreateCryptoAddressParams{
+			Address:    uuid.NewString(),
+			Coin:       db.CoinTypeXMR,
+			IsOccupied: true,
+			UserID:     userId,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var expiresAt pgtype.Timestamptz
+		if err := expiresAt.Scan(time.Now().UTC()); err != nil {
+			log.Fatal(err)
+		}
+		invoice, err := q.CreateInvoice(ctx, db.CreateInvoiceParams{
+			CryptoAddress:         expectedAddr.Address,
+			Coin:                  expectedAddr.Coin,
+			RequiredAmount:        1.0,
+			ConfirmationsRequired: 0,
+			ExpiresAt:             expiresAt,
+			UserID:                userId,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		p.broadcastUpdatedInvoice(ctx, &invoice)
+		receivedInvoice := test.GetValueFromCnOrLogFatalWithTimeout(invoiceCn, listener.MIN_SYNC_TIMEOUT, "Timeout expired")
+
+		assert.Equal(t, invoice, receivedInvoice)
+	})
+}
+
 func TestReleaseAddressHelper(t *testing.T) {
 	t.Parallel()
 
