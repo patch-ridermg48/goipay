@@ -48,14 +48,16 @@ func (b *baseCryptoProcessor) releaseAddressHelper(ctx context.Context, invoice 
 }
 
 func (b *baseCryptoProcessor) broadcastUpdatedInvoice(ctx context.Context, invoice *db.Invoice) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
 	go func() {
+		timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
 		select {
 		case b.invoiceCn <- *invoice:
+			b.log.Debug().Str("invoiceId", util.PgUUIDToString(invoice.ID)).Msg("Invoice broadcasted")
 			return
 		case <-timeoutCtx.Done():
+			b.log.Debug().Str("invoiceId", util.PgUUIDToString(invoice.ID)).Msg("Timeout expired")
 			return
 		}
 	}()
