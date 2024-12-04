@@ -26,13 +26,7 @@ func (i *InvoiceGrpc) CreateInvoice(ctx context.Context, req *pb_v1.CreateInvoic
 		i.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlTxInitMsg)
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			err = tx.Commit(ctx)
-		}
-	}()
+	defer tx.Rollback(ctx)
 
 	if req.Amount < 0 {
 		return nil, status.Error(codes.InvalidArgument, "Invoice amount can't be below 0.")
@@ -48,6 +42,8 @@ func (i *InvoiceGrpc) CreateInvoice(ctx context.Context, req *pb_v1.CreateInvoic
 		return nil, status.Error(codes.Internal, errMsg)
 	}
 
+	tx.Commit(ctx)
+
 	return &pb_v1.CreateInvoiceResponse{PaymentId: util.PgUUIDToString(invoice.ID), Address: invoice.CryptoAddress}, nil
 }
 
@@ -57,13 +53,7 @@ func (i *InvoiceGrpc) GetInvoices(ctx context.Context, req *pb_v1.GetInvoicesReq
 		i.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlTxInitMsg)
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			err = tx.Commit(ctx)
-		}
-	}()
+	defer tx.Rollback(ctx)
 
 	ids := make([]pgtype.UUID, 0, len(req.PaymentIds))
 	for j := 0; j < len(req.PaymentIds); j++ {
@@ -85,6 +75,8 @@ func (i *InvoiceGrpc) GetInvoices(ctx context.Context, req *pb_v1.GetInvoicesReq
 	for i := 0; i < len(invoices); i++ {
 		retIncoices = append(retIncoices, util.DbInvoiceToPbInvoice(&invoices[i]))
 	}
+
+	tx.Commit(ctx)
 
 	return &pb_v1.GetInvoicesResponse{Invoices: retIncoices}, nil
 }
