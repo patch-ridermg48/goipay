@@ -49,7 +49,7 @@ func (b *baseCryptoProcessor) releaseAddressHelper(ctx context.Context, invoice 
 
 func (b *baseCryptoProcessor) broadcastUpdatedInvoice(ctx context.Context, invoice *db.Invoice) {
 	go func() {
-		timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		timeoutCtx, cancel := context.WithTimeout(ctx, util.SEND_TIMEOUT)
 		defer cancel()
 
 		select {
