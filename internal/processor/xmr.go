@@ -332,7 +332,8 @@ func (p *xmrProcessor) generateNextXmrAddressHelper(ctx context.Context, q *db.Q
 	}
 
 	indices.LastMinorIndex++
-	if indices.LastMinorIndex == 0 {
+	if indices.LastMinorIndex <= 0 {
+		indices.LastMinorIndex = 0
 		indices.LastMajorIndex++
 	}
 
