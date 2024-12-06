@@ -245,48 +245,11 @@ func (p *xmrProcessor) load(ctx context.Context) error {
 		height = cache.LastSyncedBlockHeight.Int64
 	}
 
+	tx.Commit(ctx)
+
 	go func() {
-		go func() {
-			txPoolCn := p.daemonEx.NewTxPoolChan()
-
-			for {
-				select {
-				case res := <-txPoolCn:
-					go p.verifyMoneroTxOnTxMempool(ctx, incomingMoneroTxTxPool(res))
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
-
-		go func() {
-			blockCn := p.daemonEx.NewBlockChan()
-
-			for {
-				select {
-				case res := <-blockCn:
-					go func() {
-						txsRes, err := p.daemon.GetTransactions(res.BlockDetails.TxHashes, true, false, false)
-						if err != nil {
-							p.log.Err(err).Str("method", "get_transactions").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
-							return
-						}
-
-						for i := 0; i < len(txsRes.Txs); i++ {
-							go p.verifyMoneroTxOnTxMempool(ctx, incomingMoneroTxGetTx(txsRes.Txs[i]))
-						}
-
-					}()
-
-					go p.verifyMoneroTxOnNewBlock(ctx)
-
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
-
 		p.persistCryptoCache(ctx)
+
 		for {
 			select {
 			case <-time.After(persist_cache_timeout):
@@ -297,7 +260,45 @@ func (p *xmrProcessor) load(ctx context.Context) error {
 		}
 	}()
 
-	tx.Commit(ctx)
+	go func() {
+		blockCn := p.daemonEx.NewBlockChan()
+
+		for {
+			select {
+			case res := <-blockCn:
+				go func() {
+					txsRes, err := p.daemon.GetTransactions(res.BlockDetails.TxHashes, true, false, false)
+					if err != nil {
+						p.log.Err(err).Str("method", "get_transactions").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
+						return
+					}
+
+					for i := 0; i < len(txsRes.Txs); i++ {
+						go p.verifyMoneroTxOnTxMempool(ctx, incomingMoneroTxGetTx(txsRes.Txs[i]))
+					}
+
+				}()
+
+				go p.verifyMoneroTxOnNewBlock(ctx)
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	go func() {
+		txPoolCn := p.daemonEx.NewTxPoolChan()
+
+		for {
+			select {
+			case res := <-txPoolCn:
+				go p.verifyMoneroTxOnTxMempool(ctx, incomingMoneroTxTxPool(res))
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	p.daemonEx.Start(uint64(height))
 	return nil
