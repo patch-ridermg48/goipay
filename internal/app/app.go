@@ -18,7 +18,6 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/reflection"
 	"gopkg.in/yaml.v3"
 )
 
@@ -26,13 +25,6 @@ type CliOpts struct {
 	ConfigPath    string
 	ClientCAPaths string
 }
-
-type AppMode string
-
-const (
-	DEV_APP_MODE  AppMode = "dev"
-	PROD_APP_MODE AppMode = "prod"
-)
 
 type TlsMode string
 
@@ -56,8 +48,6 @@ type AppConfigTls struct {
 }
 
 type AppConfig struct {
-	Mode AppMode `yaml:"mode"`
-
 	Server struct {
 		Host string       `yaml:"host"`
 		Port string       `yaml:"port"`
@@ -89,8 +79,6 @@ func NewAppConfig(path string) (*AppConfig, error) {
 	if err := yaml.Unmarshal(data, &conf); err != nil {
 		return nil, err
 	}
-
-	conf.Mode = AppMode(os.ExpandEnv(string(conf.Mode)))
 
 	conf.Server.Host = os.ExpandEnv(conf.Server.Host)
 	conf.Server.Port = os.ExpandEnv(conf.Server.Port)
@@ -139,10 +127,6 @@ func (a *App) Start(ctx context.Context) error {
 	g := grpc.NewServer(getGrpcServerOptions(a)...)
 	pb_v1.RegisterUserServiceServer(g, handler_v1.NewUserGrpc(a.dbConnPool, a.log))
 	pb_v1.RegisterInvoiceServiceServer(g, handler_v1.NewInvoiceGrpc(a.dbConnPool, a.paymentProcessor, a.log))
-
-	if a.config.Mode == DEV_APP_MODE {
-		reflection.Register(g)
-	}
 
 	ch := make(chan error, 1)
 	go func() {

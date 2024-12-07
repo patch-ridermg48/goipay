@@ -1,5 +1,3 @@
-mode: ${MODE}
-
 server:
   host: ${SERVER_HOST}
   port: ${SERVER_PORT}
