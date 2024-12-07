@@ -156,7 +156,10 @@ func (a *App) Start(ctx context.Context) error {
 }
 
 func getGrpcServerOptions(a *App) []grpc.ServerOption {
-	grpcOpts := []grpc.ServerOption{grpc.UnaryInterceptor(NewRequestLoggingInterceptor(a.log).Intercepte)}
+	grpcOpts := []grpc.ServerOption{
+		grpc.UnaryInterceptor(NewRequestLoggingInterceptor(a.log).Intercepte),
+		grpc.UnaryInterceptor(NewMetadataInterceptor(a.log).Intercepte),
+	}
 
 	if creds, enabled := getGrpcCrednetials(a.config, a.opts); enabled {
 		grpcOpts = append(grpcOpts, creds)
