@@ -15,13 +15,13 @@ type RequestLoggingInterceptor struct {
 }
 
 func (i *RequestLoggingInterceptor) Intercepte(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	i.log.Info().Msgf("PRE %s", info.FullMethod)
+	i.log.Info().Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msgf("PRE %s", info.FullMethod)
 
 	res, err := handler(ctx, req)
 	if err != nil {
-		i.log.Info().Err(err).Str("status", "failure").Msgf("POST %s", info.FullMethod)
+		i.log.Info().Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("status", "failure").Msgf("POST %s", info.FullMethod)
 	} else {
-		i.log.Info().Str("status", "success").Msgf("POST %s", info.FullMethod)
+		i.log.Info().Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("status", "success").Msgf("POST %s", info.FullMethod)
 	}
 
 	return res, err
