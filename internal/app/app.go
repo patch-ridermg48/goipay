@@ -18,12 +18,14 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/reflection"
 	"gopkg.in/yaml.v3"
 )
 
 type CliOpts struct {
-	ConfigPath    string
-	ClientCAPaths string
+	ConfigPath        string
+	ClientCAPaths     string
+	ReflectionEnabled bool
 }
 
 type TlsMode string
@@ -127,6 +129,10 @@ func (a *App) Start(ctx context.Context) error {
 	g := grpc.NewServer(getGrpcServerOptions(a)...)
 	pb_v1.RegisterUserServiceServer(g, handler_v1.NewUserGrpc(a.dbConnPool, a.log))
 	pb_v1.RegisterInvoiceServiceServer(g, handler_v1.NewInvoiceGrpc(a.dbConnPool, a.paymentProcessor, a.log))
+
+	if a.opts.ReflectionEnabled {
+		reflection.Register(g)
+	}
 
 	ch := make(chan error, 1)
 	go func() {
