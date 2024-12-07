@@ -351,6 +351,8 @@ func TestVerifyMoneroTxOnTxMempool(t *testing.T) {
 	_, ok := p.pendingInvoices.Load(confirmedInvoice.CryptoAddress)
 	assert.False(t, ok)
 
+	<-time.After(100 * time.Millisecond)
+
 	addr, err := qTest.FindCryptoAddressByAddress(ctx, pendingMempoolInvoice.CryptoAddress)
 	assert.NoError(t, err)
 	assert.False(t, addr.IsOccupied)
