@@ -54,13 +54,7 @@ func (u *UserGrpc) RegisterUser(ctx context.Context, in *pb_v1.RegisterUserReque
 		u.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlTxInitMsg)
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			err = tx.Commit(ctx)
-		}
-	}()
+	defer tx.Rollback(ctx)
 
 	userId, err := u.createUser(ctx, q, in)
 	if err != nil {
@@ -72,6 +66,8 @@ func (u *UserGrpc) RegisterUser(ctx context.Context, in *pb_v1.RegisterUserReque
 		u.log.Err(err).Str("queryName", "CreateUser").Msg(util.DefaultFailedSqlQueryMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 	}
+
+	tx.Commit(ctx)
 
 	return &pb_v1.RegisterUserResponse{UserId: util.PgUUIDToString(*userId)}, nil
 }
@@ -121,13 +117,7 @@ func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoK
 		u.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlTxInitMsg)
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			err = tx.Commit(ctx)
-		}
-	}()
+	defer tx.Rollback(ctx)
 
 	userId, err := util.StringToPgUUID(in.UserId)
 	if err != nil {
@@ -152,6 +142,8 @@ func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoK
 		}
 	}
 
+	tx.Commit(ctx)
+
 	return &pb_v1.UpdateCryptoKeysResponse{}, nil
 }
 
@@ -161,13 +153,7 @@ func (u *UserGrpc) GetCryptoKeys(ctx context.Context, in *pb_v1.GetCryptoKeysReq
 		u.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlTxInitMsg)
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			err = tx.Commit(ctx)
-		}
-	}()
+	defer tx.Rollback(ctx)
 
 	userId, err := util.StringToPgUUID(in.UserId)
 	if err != nil {
@@ -184,6 +170,8 @@ func (u *UserGrpc) GetCryptoKeys(ctx context.Context, in *pb_v1.GetCryptoKeysReq
 		u.log.Err(err).Str("queryName", "FindCryptoKeysByUserId").Msg(util.DefaultFailedSqlQueryMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 	}
+
+	tx.Commit(ctx)
 
 	return &pb_v1.GetCryptoKeysResponse{
 		XmrKeys: &pb_v1.XmrKeys{
