@@ -13,11 +13,13 @@ import (
 func main() {
 	configPath := flag.String("config", "config.yml", "Path to the config file")
 	clientCAs := flag.String("client-ca", "", "Comma-separated list of paths to client certificate authority files (for mTLS)")
+	reflection := flag.Bool("reflection", false, "Enables gRPC server reflection")
 	flag.Parse()
 
 	app := app.NewApp(app.CliOpts{
-		ConfigPath:    *configPath,
-		ClientCAPaths: *clientCAs,
+		ConfigPath:        *configPath,
+		ClientCAPaths:     *clientCAs,
+		ReflectionEnabled: *reflection,
 	})
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
