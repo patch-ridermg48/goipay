@@ -15,7 +15,7 @@ const (
 )
 
 const (
-	RequestIdKey              = "Request-ID"
+	RequestIdKey              = "request-id"
 	MetadataCtxKey contextKey = "metadata"
 )
 
