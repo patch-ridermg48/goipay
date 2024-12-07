@@ -23,7 +23,7 @@ type InvoiceGrpc struct {
 func (i *InvoiceGrpc) CreateInvoice(ctx context.Context, req *pb_v1.CreateInvoiceRequest) (*pb_v1.CreateInvoiceResponse, error) {
 	q, tx, err := util.InitDbQueriesWithTx(ctx, i.dbConnPool)
 	if err != nil {
-		i.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
+		i.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg(util.DefaultFailedSqlTxInitMsg)
 		return nil, status.Error(codes.Internal, util.DefaultFailedSqlTxInitMsg)
 	}
 	defer tx.Rollback(ctx)
@@ -38,7 +38,7 @@ func (i *InvoiceGrpc) CreateInvoice(ctx context.Context, req *pb_v1.CreateInvoic
 	invoice, err := i.paymentProcessor.HandleNewInvoice(util.PbNewInvoiceToProcessorNewInvoice(req))
 	if err != nil {
 		errMsg := "An error occurred while handling invoice."
-		i.log.Err(err).Msg(errMsg)
+		i.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg(errMsg)
 		return nil, status.Error(codes.Internal, errMsg)
 	}
 
