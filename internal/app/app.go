@@ -158,8 +158,8 @@ func (a *App) Start(ctx context.Context) error {
 func getGrpcServerOptions(a *App) []grpc.ServerOption {
 	grpcOpts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
-			NewRequestLoggingInterceptor(a.log).Intercepte,
 			NewMetadataInterceptor(a.log).Intercepte,
+			NewRequestLoggingInterceptor(a.log).Intercepte,
 		),
 	}
 
