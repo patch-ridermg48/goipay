@@ -27,12 +27,13 @@ A lightweight crypto payment processor microservice, written in Golang, designed
   ```
 - Inside the root dir create and populate ```.env``` file on the base of ```.env.example``` file
   ```ini
-  # Can be either 'prod' or 'dev'.
-  # In 'dev' mode, a reflection server is established.
-  MODE=dev
-
   SERVER_HOST=0.0.0.0
   SERVER_PORT=3000
+
+  SERVER_TLS_MODE=tls
+  SERVER_TLS_CA=/app/cert/server/ca.crt
+  SERVER_TLS_CERT=/app/cert/server/server.crt
+  SERVER_TLS_KEY=/app/cert/server/server.key
 
   # As for now, only PostgreSQL is supported
   DATABASE_HOST=db
