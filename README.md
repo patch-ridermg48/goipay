@@ -1,5 +1,3 @@
-# GoiPay
-
 <div align="center">
   <img src="https://raw.githubusercontent.com/goipay/goipay.github.io/refs/heads/master/static/img/goipay-logo-with-name.svg" alt="Logo" width="400" height="100">
 
@@ -27,7 +25,7 @@ A lightweight crypto payment processor microservice, written in Golang, designed
   ```sh
   git clone https://github.com/goipay/goipay.git
   ```
-- Inside the root dir create and populate ```.env``` file on the base of ```.env.docker``` file
+- Inside the root dir create and populate ```.env``` file on the base of ```.env.example``` file
   ```ini
   # Can be either 'prod' or 'dev'.
   # In 'dev' mode, a reflection server is established.
