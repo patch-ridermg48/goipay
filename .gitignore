@@ -5,4 +5,3 @@ bin
 .coverage*
 
 !*.example
-!.env.docker
