@@ -24,4 +24,4 @@ COPY --from=builder /app/config.yml .
 
 EXPOSE 3000
 
-CMD [ "./server" ]
+ENTRYPOINT [ "./server" ]

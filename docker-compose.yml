@@ -30,8 +30,11 @@ services:
     image: chekist32/goipay:latest
     env_file:
       - ./.env
+    volumes:
+      - ./cert/server:/app/cert/server
     depends_on:
       migrations:
         condition: service_completed_successfully
+    command: ["--log-level=debug", "--reflection"]
     ports:
       - "3000:3000"
