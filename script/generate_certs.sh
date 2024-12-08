@@ -41,7 +41,7 @@ subjectAltName     = @alt_names
  
 [ alt_names ]
 DNS.1              = localhost
-DNS.1              = backend-processor
+DNS.2              = backend-processor
 IP.1               = 127.0.0.1
 IP.2               = 0.0.0.0
 EOF
@@ -90,7 +90,7 @@ subjectAltName     = @alt_names
  
 [ alt_names ]
 DNS.1              = localhost
-DNS.1              = backend-processor
+DNS.2              = backend-processor
 IP.1               = 127.0.0.1
 IP.2               = 0.0.0.0
 EOF
