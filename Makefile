@@ -8,11 +8,8 @@ protoGoGrpcOutDir = $(protoGoOutDir)
 
 cmdServerDir = ./cmd/server
 
-clean-pb:
-	rm -rf $(protoGoOutDir)/*
-
 gen-pb:
-	./script/generate_pb.sh -i $(protoPathDir) -o $(protoGoOutDir) v1
+	rm -rf $(protoGoOutDir)/* && ./script/generate_pb.sh -i $(protoPathDir) -o $(protoGoOutDir) v1
 
 run-migrations:
 	goose -dir $(migrationsDir) postgres $(dbConnStr) up
