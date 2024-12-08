@@ -248,19 +248,6 @@ func (p *xmrProcessor) load(ctx context.Context) error {
 	tx.Commit(ctx)
 
 	go func() {
-		p.persistCryptoCache(ctx)
-
-		for {
-			select {
-			case <-time.After(persist_cache_timeout):
-				go p.persistCryptoCache(ctx)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	go func() {
 		blockCn := p.daemonEx.NewBlockChan()
 
 		for {
@@ -301,6 +288,20 @@ func (p *xmrProcessor) load(ctx context.Context) error {
 	}()
 
 	p.daemonEx.Start(uint64(height))
+
+	go func() {
+		p.persistCryptoCache(ctx)
+
+		for {
+			select {
+			case <-time.After(persist_cache_timeout):
+				go p.persistCryptoCache(ctx)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
 	return nil
 }
 
