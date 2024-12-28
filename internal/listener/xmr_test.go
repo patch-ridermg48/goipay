@@ -5,92 +5,14 @@ import (
 	"errors"
 	"log"
 	"math/rand"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/chekist32/go-monero/daemon"
 	"github.com/chekist32/goipay/test"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestBlockChan(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Check NewBlockChan Func", func(t *testing.T) {
-		d := new(test.MockXMRDaemonRpcClient)
-		xmr := NewDaemonRpcClientExecutor(d, zerolog.DefaultContextLogger)
-
-		expectedBlockResult := daemon.GetBlockResult{
-			BlockDetails: daemon.BlockDetails{
-				Timestamp: rand.Uint32(),
-			},
-		}
-
-		blockCnAmount := atomic.Int32{}
-		blockCnAmount.Store(0)
-
-		blockCn := xmr.NewBlockChan()
-		xmr.newBlockChns.Range(func(key string, value chan daemon.GetBlockResult) bool {
-			go func() {
-				blockCnAmount.Add(1)
-				value <- expectedBlockResult
-			}()
-
-			return true
-		})
-
-		actualBlockResult := daemon.GetBlockResult{}
-		select {
-		case actualBlockResult = <-blockCn:
-			break
-		case <-time.After(MIN_SYNC_TIMEOUT):
-			log.Fatal(errors.New("Timeout has been expired"))
-		}
-
-		assert.Equal(t, int32(1), blockCnAmount.Load())
-		assert.Equal(t, expectedBlockResult, actualBlockResult)
-	})
-}
-
-func TestTxPoolChan(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Check NewTxPoolChan Func", func(t *testing.T) {
-		d := new(test.MockXMRDaemonRpcClient)
-		xmr := NewDaemonRpcClientExecutor(d, zerolog.DefaultContextLogger)
-
-		expectedMoneroTx := daemon.MoneroTx{
-			IdHash: uuid.NewString(),
-		}
-
-		txPoolCnAmount := atomic.Int32{}
-		txPoolCnAmount.Store(0)
-
-		txPoolCn := xmr.NewTxPoolChan()
-		xmr.txPoolChns.Range(func(key string, value chan daemon.MoneroTx) bool {
-			go func() {
-				txPoolCnAmount.Add(1)
-				value <- expectedMoneroTx
-			}()
-
-			return true
-		})
-
-		actualMoneroTx := daemon.MoneroTx{}
-		select {
-		case actualMoneroTx = <-txPoolCn:
-			break
-		case <-time.After(MIN_SYNC_TIMEOUT):
-			log.Fatal(errors.New("Timeout has been expired"))
-		}
-
-		assert.Equal(t, int32(1), txPoolCnAmount.Load())
-		assert.Equal(t, expectedMoneroTx, actualMoneroTx)
-	})
-}
 
 func TestSyncBlock(t *testing.T) {
 	t.Parallel()
@@ -121,12 +43,12 @@ func TestSyncBlock(t *testing.T) {
 			error(nil),
 		)
 
-		xmr := NewDaemonRpcClientExecutor(d, &zerolog.Logger{})
+		xmr := NewXMRDaemonRpcClientExecutor(d, &zerolog.Logger{})
 		xmr.blockSync.lastBlockHeight.Store(lastBlockHeight - 1)
 		blockCn := xmr.NewBlockChan()
 
-		ctx := context.Background()
-		xmr.syncBlock(ctx)
+		xmr.ctx = context.Background()
+		xmr.syncBlock()
 
 		actualBlockResult := daemon.GetBlockResult{}
 		select {
@@ -166,12 +88,12 @@ func TestSyncBlock(t *testing.T) {
 			error(nil),
 		)
 
-		xmr := NewDaemonRpcClientExecutor(d, &zerolog.Logger{})
+		xmr := NewXMRDaemonRpcClientExecutor(d, &zerolog.Logger{})
 		xmr.blockSync.lastBlockHeight.Store(lastBlockHeight - 1)
 		_ = xmr.NewBlockChan()
 
-		ctx := context.Background()
-		xmr.syncBlock(ctx)
+		xmr.ctx = context.Background()
+		xmr.syncBlock()
 
 		<-time.After(MIN_SYNC_TIMEOUT + 1*time.Second)
 
@@ -211,7 +133,7 @@ func TestSyncTransactionPool(t *testing.T) {
 			error(nil),
 		)
 
-		xmr := NewDaemonRpcClientExecutor(d, &zerolog.Logger{})
+		xmr := NewXMRDaemonRpcClientExecutor(d, &zerolog.Logger{})
 		txPoolCn := xmr.NewTxPoolChan()
 
 		xmr.syncTransactionPool()
@@ -301,7 +223,7 @@ func TestSyncTransactionPool(t *testing.T) {
 			error(nil),
 		)
 
-		xmr := NewDaemonRpcClientExecutor(d, &zerolog.Logger{})
+		xmr := NewXMRDaemonRpcClientExecutor(d, &zerolog.Logger{})
 		_ = xmr.NewTxPoolChan()
 
 		xmr.syncTransactionPool()
@@ -315,24 +237,4 @@ func TestSyncTransactionPool(t *testing.T) {
 
 		assert.Equal(t, 0, cnCount)
 	})
-
-}
-
-func TestStartStop(t *testing.T) {
-	t.Parallel()
-
-	d := new(test.MockXMRDaemonRpcClient)
-	xmr := NewDaemonRpcClientExecutor(d, &zerolog.Logger{})
-
-	xmr.Start(0)
-	assert.True(t, xmr.isStarted)
-
-	xmr.Start(0)
-	assert.True(t, xmr.isStarted)
-
-	<-time.After(1 * time.Second)
-	xmr.Stop()
-	<-time.After(1 * time.Second)
-
-	assert.False(t, xmr.isStarted)
 }

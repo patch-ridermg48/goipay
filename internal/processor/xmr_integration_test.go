@@ -90,7 +90,7 @@ func createNewTestXmrProcessor() (chan db.Invoice, *xmrProcessor, testcontainers
 
 	xmr := &xmrProcessor{
 		daemon:   d,
-		daemonEx: listener.NewDaemonRpcClientExecutor(d, &zerolog.Logger{}),
+		daemonEx: listener.NewXMRDaemonRpcClientExecutor(d, &zerolog.Logger{}),
 		network:  utils.Stagenet,
 		baseCryptoProcessor: baseCryptoProcessor{
 			log:             &zerolog.Logger{},

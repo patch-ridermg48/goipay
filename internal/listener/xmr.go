@@ -1,40 +1,20 @@
 package listener
 
 import (
-	"context"
-	"sync/atomic"
 	"time"
 
 	"github.com/chekist32/go-monero/daemon"
 	"github.com/chekist32/goipay/internal/util"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
-type transactionPoolSync struct {
-	txs map[string]bool
-}
-
-type blockSync struct {
-	lastBlockHeight atomic.Uint64
-}
-
-type DaemonRpcClientExecutor struct {
-	log *zerolog.Logger
-
+type XMRDaemonRpcClientExecutor struct {
 	client daemon.IDaemonRpcClient
 
-	txPoolChns   *util.SyncMapTypeSafe[string, chan daemon.MoneroTx]
-	newBlockChns *util.SyncMapTypeSafe[string, chan daemon.GetBlockResult]
-
-	isStarted bool
-	stop      chan struct{}
-
-	blockSync           blockSync
-	transactionPoolSync transactionPoolSync
+	baseDaemonRpcClientExecutor[daemon.MoneroTx, daemon.GetBlockResult]
 }
 
-func (d *DaemonRpcClientExecutor) syncBlock(ctx context.Context) {
+func (d *XMRDaemonRpcClientExecutor) syncBlock() {
 	height, err := d.client.GetLastBlockHeader(true)
 	if err != nil {
 		d.log.Err(err).Str("method", "last_block_header").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
@@ -43,7 +23,7 @@ func (d *DaemonRpcClientExecutor) syncBlock(ctx context.Context) {
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-d.ctx.Done():
 			return
 		default:
 			if height.Result.BlockHeader.Height <= d.blockSync.lastBlockHeight.Load() {
@@ -75,7 +55,7 @@ func (d *DaemonRpcClientExecutor) syncBlock(ctx context.Context) {
 	}
 }
 
-func (d *DaemonRpcClientExecutor) syncTransactionPool() {
+func (d *XMRDaemonRpcClientExecutor) syncTransactionPool() {
 	txs, err := d.client.GetTransactionPool()
 	if err != nil {
 		d.log.Err(err).Str("method", "get_transaction_pool").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
@@ -111,79 +91,13 @@ func (d *DaemonRpcClientExecutor) syncTransactionPool() {
 	d.transactionPoolSync.txs = newTxs
 }
 
-func (d *DaemonRpcClientExecutor) sync(blockTimeout time.Duration, txPoolTimeout time.Duration) {
-	t1 := time.NewTicker(blockTimeout)
-	t2 := time.NewTicker(txPoolTimeout)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go func() {
-		for {
-			s := ctx.Done()
-			select {
-			case <-s:
-				return
-			case <-t1.C:
-				d.syncBlock(ctx)
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			s := ctx.Done()
-			select {
-			case <-s:
-				return
-			case <-t2.C:
-				d.syncTransactionPool()
-			}
-		}
-	}()
-
-	<-d.stop
-	d.isStarted = false
+func (d *XMRDaemonRpcClientExecutor) Start(startBlock uint64) {
+	d.baseDaemonRpcClientExecutor.start(d, startBlock)
 }
 
-func (d *DaemonRpcClientExecutor) Start(startBlock uint64) {
-	if d.isStarted {
-		return
-	}
-	d.isStarted = true
-	d.blockSync.lastBlockHeight.Store(startBlock)
-
-	go d.sync(MIN_SYNC_TIMEOUT, MIN_SYNC_TIMEOUT/2)
-}
-
-func (d *DaemonRpcClientExecutor) Stop() {
-	d.stop <- struct{}{}
-}
-
-func (d *DaemonRpcClientExecutor) NewBlockChan() <-chan daemon.GetBlockResult {
-	cn := make(chan daemon.GetBlockResult)
-	d.newBlockChns.Store(uuid.NewString(), cn)
-	return cn
-}
-
-func (d *DaemonRpcClientExecutor) NewTxPoolChan() <-chan daemon.MoneroTx {
-	cn := make(chan daemon.MoneroTx)
-	d.txPoolChns.Store(uuid.NewString(), cn)
-	return cn
-}
-
-func (d *DaemonRpcClientExecutor) LastSyncedBlockHeight() uint64 {
-	return d.blockSync.lastBlockHeight.Load()
-}
-
-func NewDaemonRpcClientExecutor(client daemon.IDaemonRpcClient, log *zerolog.Logger) *DaemonRpcClientExecutor {
-	return &DaemonRpcClientExecutor{
-		log:                 log,
-		client:              client,
-		transactionPoolSync: transactionPoolSync{txs: make(map[string]bool)},
-		isStarted:           false,
-		stop:                make(chan struct{}),
-		txPoolChns:          &util.SyncMapTypeSafe[string, chan daemon.MoneroTx]{},
-		newBlockChns:        &util.SyncMapTypeSafe[string, chan daemon.GetBlockResult]{},
+func NewXMRDaemonRpcClientExecutor(client daemon.IDaemonRpcClient, log *zerolog.Logger) *XMRDaemonRpcClientExecutor {
+	return &XMRDaemonRpcClientExecutor{
+		baseDaemonRpcClientExecutor: newBaseDaemonRpcClientExecutor[daemon.MoneroTx, daemon.GetBlockResult](log),
+		client:                      client,
 	}
 }

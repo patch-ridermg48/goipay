@@ -63,7 +63,7 @@ func (i incomingMoneroTxGetTx) txId() string {
 
 type xmrProcessor struct {
 	daemon   daemon.IDaemonRpcClient
-	daemonEx *listener.DaemonRpcClientExecutor
+	daemonEx *listener.XMRDaemonRpcClientExecutor
 	network  utils.NetworkType
 
 	baseCryptoProcessor
@@ -454,7 +454,7 @@ func newXmrProcessor(dbConnPool *pgxpool.Pool, invoiceCn chan<- db.Invoice, c *d
 				pendingInvoices: new(util.SyncMapTypeSafe[string, pendingInvoice]),
 			},
 			daemon:   d,
-			daemonEx: listener.NewDaemonRpcClientExecutor(d, log),
+			daemonEx: listener.NewXMRDaemonRpcClientExecutor(d, log),
 			network:  net,
 		},
 		nil
