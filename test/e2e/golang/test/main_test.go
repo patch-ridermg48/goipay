@@ -126,7 +126,6 @@ func TestSimpleRegisterUser(t *testing.T) {
 	t.Cleanup(func() {
 		goipayClean(ctx)
 		xmrWallet.CloseWallet()
-		// moneroWalletRpcClean(ctx)
 		cancel()
 	})
 

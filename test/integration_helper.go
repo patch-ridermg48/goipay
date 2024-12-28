@@ -72,7 +72,6 @@ func SpinUpPostgresContainer(pathToMigration string) (testcontainers.Container, 
 		Mounts: testcontainers.ContainerMounts{
 			{
 				Source: testcontainers.GenericBindMountSource{
-					// HostPath: fmt.Sprintf("%v/../../../sql/migrations", os.Getenv("PWD")),
 					HostPath: pathToMigration,
 				},
 				Target: testcontainers.ContainerMountTarget("/migrations"),
