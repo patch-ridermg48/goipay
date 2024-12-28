@@ -17,7 +17,7 @@ type XMRDaemonRpcClientExecutor struct {
 func (d *XMRDaemonRpcClientExecutor) syncBlock() {
 	height, err := d.client.GetLastBlockHeader(true)
 	if err != nil {
-		d.log.Err(err).Str("method", "last_block_header").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
+		d.log.Err(err).Str("method", "last_block_header").Msg(util.DefaultFailedFetchingDaemonMsg)
 		return
 	}
 
@@ -32,7 +32,7 @@ func (d *XMRDaemonRpcClientExecutor) syncBlock() {
 
 			block, err := d.client.GetBlockByHeight(true, d.blockSync.lastBlockHeight.Load())
 			if err != nil {
-				d.log.Err(err).Str("method", "get_block").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
+				d.log.Err(err).Str("method", "get_block").Msg(util.DefaultFailedFetchingDaemonMsg)
 				return
 			}
 			d.log.Info().Msgf("Synced blockheight: %v", block.Result.BlockHeader.Height)
@@ -42,7 +42,7 @@ func (d *XMRDaemonRpcClientExecutor) syncBlock() {
 					select {
 					case cn <- block.Result:
 						return
-					case <-time.After(MIN_SYNC_TIMEOUT):
+					case <-time.After(util.MIN_SYNC_TIMEOUT):
 						d.newBlockChns.Delete(key)
 						return
 					}
@@ -58,7 +58,7 @@ func (d *XMRDaemonRpcClientExecutor) syncBlock() {
 func (d *XMRDaemonRpcClientExecutor) syncTransactionPool() {
 	txs, err := d.client.GetTransactionPool()
 	if err != nil {
-		d.log.Err(err).Str("method", "get_transaction_pool").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
+		d.log.Err(err).Str("method", "get_transaction_pool").Msg(util.DefaultFailedFetchingDaemonMsg)
 		return
 	}
 
@@ -78,7 +78,7 @@ func (d *XMRDaemonRpcClientExecutor) syncTransactionPool() {
 				select {
 				case cn <- fetchedTxs[i]:
 					return
-				case <-time.After(MIN_SYNC_TIMEOUT):
+				case <-time.After(util.MIN_SYNC_TIMEOUT):
 					d.txPoolChns.Delete(key)
 					return
 				}

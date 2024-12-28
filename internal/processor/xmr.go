@@ -182,7 +182,7 @@ func (p *xmrProcessor) confirmInvoiceHelper(ctx context.Context, value pendingIn
 
 	xmrTx, err := p.daemon.GetTransactions([]string{invoice.TxID.String}, true, false, false)
 	if err != nil {
-		p.log.Err(err).Str("method", "get_transactions").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
+		p.log.Err(err).Str("method", "get_transactions").Msg(util.DefaultFailedFetchingDaemonMsg)
 		return
 	}
 	if len(xmrTx.MissedTx) > 0 {
@@ -236,7 +236,7 @@ func (p *xmrProcessor) load(ctx context.Context) error {
 
 	res, err := p.daemon.GetLastBlockHeader(false)
 	if err != nil {
-		p.log.Err(err).Str("method", "get_last_block_header").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
+		p.log.Err(err).Str("method", "get_last_block_header").Msg(util.DefaultFailedFetchingDaemonMsg)
 		return err
 	}
 
@@ -256,7 +256,7 @@ func (p *xmrProcessor) load(ctx context.Context) error {
 				go func() {
 					txsRes, err := p.daemon.GetTransactions(res.BlockDetails.TxHashes, true, false, false)
 					if err != nil {
-						p.log.Err(err).Str("method", "get_transactions").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
+						p.log.Err(err).Str("method", "get_transactions").Msg(util.DefaultFailedFetchingDaemonMsg)
 						return
 					}
 
@@ -372,8 +372,8 @@ func (p *xmrProcessor) createInvoice(ctx context.Context, req *dto.NewInvoiceReq
 	coin := req.Coin
 
 	timeout := time.Duration(req.Timeout) * time.Second
-	if timeout < listener.MIN_SYNC_TIMEOUT {
-		timeout = listener.MIN_SYNC_TIMEOUT
+	if timeout < util.MIN_SYNC_TIMEOUT {
+		timeout = util.MIN_SYNC_TIMEOUT
 	}
 
 	var expiresAt pgtype.Timestamptz

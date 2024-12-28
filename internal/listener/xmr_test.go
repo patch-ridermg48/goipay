@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/chekist32/go-monero/daemon"
+	"github.com/chekist32/goipay/internal/util"
 	"github.com/chekist32/goipay/test"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +55,7 @@ func TestSyncBlock(t *testing.T) {
 		select {
 		case actualBlockResult = <-blockCn:
 			break
-		case <-time.After(MIN_SYNC_TIMEOUT):
+		case <-time.After(util.MIN_SYNC_TIMEOUT):
 			log.Fatal(errors.New("Timeout has been expired"))
 		}
 
@@ -95,7 +96,7 @@ func TestSyncBlock(t *testing.T) {
 		xmr.ctx = context.Background()
 		xmr.syncBlock()
 
-		<-time.After(MIN_SYNC_TIMEOUT + 1*time.Second)
+		<-time.After(util.MIN_SYNC_TIMEOUT + 1*time.Second)
 
 		cnCount := 0
 		xmr.newBlockChns.Range(func(key string, value chan daemon.GetBlockResult) bool {
@@ -143,7 +144,7 @@ func TestSyncTransactionPool(t *testing.T) {
 			select {
 			case tx := <-txPoolCn:
 				txs1[tx.IdHash] = tx
-			case <-time.After(MIN_SYNC_TIMEOUT):
+			case <-time.After(util.MIN_SYNC_TIMEOUT):
 				log.Fatal(errors.New("Timeout has been expired"))
 			}
 		}
@@ -185,7 +186,7 @@ func TestSyncTransactionPool(t *testing.T) {
 			select {
 			case tx := <-txPoolCn:
 				txs2[tx.IdHash] = tx
-			case <-time.After(MIN_SYNC_TIMEOUT):
+			case <-time.After(util.MIN_SYNC_TIMEOUT):
 				log.Fatal(errors.New("Timeout has been expired"))
 			}
 		}
@@ -227,7 +228,7 @@ func TestSyncTransactionPool(t *testing.T) {
 		_ = xmr.NewTxPoolChan()
 
 		xmr.syncTransactionPool()
-		<-time.After(MIN_SYNC_TIMEOUT + 1*time.Second)
+		<-time.After(util.MIN_SYNC_TIMEOUT + 1*time.Second)
 
 		cnCount := 0
 		xmr.txPoolChns.Range(func(key string, value chan daemon.MoneroTx) bool {

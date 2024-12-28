@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/chekist32/goipay/internal/db"
-	"github.com/chekist32/goipay/internal/listener"
 	"github.com/chekist32/goipay/internal/util"
 	"github.com/chekist32/goipay/test"
 	db_test "github.com/chekist32/goipay/test/db"
@@ -79,7 +78,7 @@ func TestBroadcastInvoice(t *testing.T) {
 		}
 
 		p.broadcastUpdatedInvoice(ctx, &invoice)
-		receivedInvoice := test.GetValueFromCnOrLogFatalWithTimeout(invoiceCn, listener.MIN_SYNC_TIMEOUT, "Timeout expired")
+		receivedInvoice := test.GetValueFromCnOrLogFatalWithTimeout(invoiceCn, util.MIN_SYNC_TIMEOUT, "Timeout expired")
 
 		assert.Equal(t, invoice, receivedInvoice)
 	})
@@ -186,7 +185,7 @@ func TestExpireInvoice(t *testing.T) {
 
 		go p.expireInvoice(ctx, &expectedPendingInvoice)
 
-		expiredInvoice := test.GetValueFromCnOrLogFatalWithTimeout(invoiceCn, listener.MIN_SYNC_TIMEOUT, "Timeout expired")
+		expiredInvoice := test.GetValueFromCnOrLogFatalWithTimeout(invoiceCn, util.MIN_SYNC_TIMEOUT, "Timeout expired")
 		assert.Equal(t, expectedPendingInvoice.ID, expiredInvoice.ID)
 		assert.Equal(t, db.InvoiceStatusTypeEXPIRED, expiredInvoice.Status)
 
@@ -327,7 +326,7 @@ func TestHandleInvoice(t *testing.T) {
 
 		p.handleInvoice(ctx, expectedPendingInvoice)
 
-		_ = test.GetValueFromCnOrLogFatalWithTimeout(invoiceCn, listener.MIN_SYNC_TIMEOUT, "Timeout expired")
+		_ = test.GetValueFromCnOrLogFatalWithTimeout(invoiceCn, util.MIN_SYNC_TIMEOUT, "Timeout expired")
 		<-time.After(1 * time.Second)
 
 		_, ok := p.pendingInvoices.Load(expectedPendingInvoice.CryptoAddress)

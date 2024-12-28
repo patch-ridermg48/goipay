@@ -10,10 +10,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const (
-	MIN_SYNC_TIMEOUT time.Duration = 10 * time.Second
-)
-
 type transactionPoolSync struct {
 	txs map[string]bool
 }
@@ -79,7 +75,7 @@ func (d *baseDaemonRpcClientExecutor[T, B]) start(drce DaemonRpcClientExecutor[T
 	d.ctx, d.cancel = context.WithCancel(context.Background())
 	d.blockSync.lastBlockHeight.Store(startBlock)
 
-	d.sync(drce, MIN_SYNC_TIMEOUT, MIN_SYNC_TIMEOUT/2)
+	d.sync(drce, util.MIN_SYNC_TIMEOUT, util.MIN_SYNC_TIMEOUT/2)
 }
 
 func (d *baseDaemonRpcClientExecutor[T, B]) Stop() {

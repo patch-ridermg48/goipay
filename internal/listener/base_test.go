@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/chekist32/goipay/internal/util"
 	"github.com/chekist32/goipay/test"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -54,7 +55,7 @@ func TestBlockChan(t *testing.T) {
 			return true
 		})
 
-		actualBlock := test.GetValueFromCnOrLogFatalWithTimeout[testBlock](blockCn, MIN_SYNC_TIMEOUT, "Timeout has been expired")
+		actualBlock := test.GetValueFromCnOrLogFatalWithTimeout[testBlock](blockCn, util.MIN_SYNC_TIMEOUT, "Timeout has been expired")
 
 		assert.Equal(t, int32(1), blockCnAmount.Load())
 		assert.Equal(t, expectedBlock, actualBlock)
@@ -84,7 +85,7 @@ func TestTxPoolChan(t *testing.T) {
 			return true
 		})
 
-		actualTx := test.GetValueFromCnOrLogFatalWithTimeout[testTx](txPoolCn, MIN_SYNC_TIMEOUT, "Timeout has been expired")
+		actualTx := test.GetValueFromCnOrLogFatalWithTimeout[testTx](txPoolCn, util.MIN_SYNC_TIMEOUT, "Timeout has been expired")
 
 		assert.Equal(t, int32(1), txPoolCnAmount.Load())
 		assert.Equal(t, expectedTx, actualTx)
