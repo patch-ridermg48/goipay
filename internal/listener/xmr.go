@@ -1,8 +1,6 @@
 package listener
 
 import (
-	"time"
-
 	"github.com/chekist32/go-monero/daemon"
 	"github.com/chekist32/goipay/internal/util"
 	"github.com/rs/zerolog"
@@ -37,18 +35,7 @@ func (d *XMRDaemonRpcClientExecutor) syncBlock() {
 			}
 			d.log.Info().Msgf("Synced blockheight: %v", block.Result.BlockHeader.Height)
 
-			d.newBlockChns.Range(func(key string, cn chan daemon.GetBlockResult) bool {
-				go func() {
-					select {
-					case cn <- block.Result:
-						return
-					case <-time.After(util.MIN_SYNC_TIMEOUT):
-						d.newBlockChns.Delete(key)
-						return
-					}
-				}()
-				return true
-			})
+			d.broadcastNewBlock(&block.Result)
 
 			d.blockSync.lastBlockHeight.Add(1)
 		}
@@ -73,19 +60,7 @@ func (d *XMRDaemonRpcClientExecutor) syncTransactionPool() {
 			continue
 		}
 
-		d.txPoolChns.Range(func(key string, cn chan daemon.MoneroTx) bool {
-			go func() {
-				select {
-				case cn <- fetchedTxs[i]:
-					return
-				case <-time.After(util.MIN_SYNC_TIMEOUT):
-					d.txPoolChns.Delete(key)
-					return
-				}
-			}()
-
-			return true
-		})
+		d.broadcastNewTx(&fetchedTxs[i])
 	}
 
 	d.transactionPoolSync.txs = newTxs

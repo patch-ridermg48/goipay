@@ -42,6 +42,36 @@ type baseDaemonRpcClientExecutor[T, B any] struct {
 	transactionPoolSync transactionPoolSync
 }
 
+func (d *baseDaemonRpcClientExecutor[T, B]) broadcastNewBlock(block *B) {
+	d.newBlockChns.Range(func(key string, cn chan B) bool {
+		go func() {
+			select {
+			case cn <- *block:
+				return
+			case <-time.After(util.MIN_SYNC_TIMEOUT):
+				d.newBlockChns.Delete(key)
+				return
+			}
+		}()
+		return true
+	})
+}
+
+func (d *baseDaemonRpcClientExecutor[T, B]) broadcastNewTx(tx *T) {
+	d.txPoolChns.Range(func(key string, cn chan T) bool {
+		go func() {
+			select {
+			case cn <- *tx:
+				return
+			case <-time.After(util.MIN_SYNC_TIMEOUT):
+				d.txPoolChns.Delete(key)
+				return
+			}
+		}()
+		return true
+	})
+}
+
 func (d *baseDaemonRpcClientExecutor[T, B]) sync(drce DaemonRpcClientExecutor[T, B], blockTimeout time.Duration, txPoolTimeout time.Duration) {
 	go func() {
 		t := time.NewTicker(blockTimeout)
