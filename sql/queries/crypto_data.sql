@@ -12,6 +12,12 @@ SET xmr_id = $2
 WHERE user_id = $1
 RETURNING *;
 
+-- name: SetBTCCryptoDataByUserId :one
+UPDATE crypto_data
+SET btc_id = $2
+WHERE user_id = $1
+RETURNING *;
+
 
 -- XMR
 -- name: CreateXMRCryptoData :one
@@ -41,6 +47,38 @@ FOR UPDATE;
 
 -- name: UpdateIndicesXMRCryptoDataById :one
 UPDATE xmr_crypto_data
+SET last_major_index = $2,
+    last_minor_index = $3
+WHERE id = $1
+RETURNING *;
+
+-- BTC
+-- name: CreateBTCCryptoData :one
+INSERT INTO btc_crypto_data(master_pub_key) VALUES ($1)
+RETURNING *;
+
+-- name: FindKeysAndLockBTCCryptoDataById :one
+SELECT master_pub_key
+FROM btc_crypto_data
+WHERE id = $1
+FOR SHARE;
+
+-- name: UpdateKeysBTCCryptoDataById :one
+UPDATE btc_crypto_data
+SET master_pub_key = $2,
+    last_major_index = 0,
+    last_minor_index = 0
+WHERE id = $1
+RETURNING *;
+
+-- name: FindIndicesAndLockBTCCryptoDataById :one
+SELECT last_major_index, last_minor_index 
+FROM btc_crypto_data
+WHERE id = $1
+FOR UPDATE;
+
+-- name: UpdateIndicesBTCCryptoDataById :one
+UPDATE btc_crypto_data
 SET last_major_index = $2,
     last_minor_index = $3
 WHERE id = $1

@@ -100,6 +100,13 @@ func (ns NullInvoiceStatusType) Value() (driver.Value, error) {
 	return string(ns.InvoiceStatusType), nil
 }
 
+type BtcCryptoDatum struct {
+	ID             pgtype.UUID
+	MasterPubKey   string
+	LastMajorIndex int32
+	LastMinorIndex int32
+}
+
 type CryptoAddress struct {
 	ID         pgtype.UUID
 	Address    string
@@ -117,6 +124,7 @@ type CryptoCache struct {
 type CryptoDatum struct {
 	UserID pgtype.UUID
 	XmrID  pgtype.UUID
+	BtcID  pgtype.UUID
 }
 
 type Invoice struct {
