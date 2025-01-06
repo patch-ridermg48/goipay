@@ -31,6 +31,7 @@ type PaymentProcessor struct {
 	newInvoicesCns *util.SyncMapTypeSafe[string, chan db.Invoice]
 
 	xmr *xmrProcessor
+	btc *btcProcessor
 }
 
 func (p *PaymentProcessor) loadPersistedPendingInvoices() error {
@@ -53,8 +54,8 @@ func (p *PaymentProcessor) loadPersistedPendingInvoices() error {
 		switch invoices[i].Coin {
 		case db.CoinTypeXMR:
 			go p.xmr.handleInvoice(p.ctx, invoices[i])
-		// TODO: Add impelmentation for BTC
 		case db.CoinTypeBTC:
+			go p.btc.handleInvoice(p.ctx, invoices[i])
 		// TODO: Add impelmentation for LTC
 		case db.CoinTypeLTC:
 		// TODO: Add impelmentation for ETH
@@ -102,6 +103,9 @@ func (p *PaymentProcessor) load() error {
 	if err := p.xmr.load(p.ctx); err != nil {
 		return err
 	}
+	if err := p.btc.load(p.ctx); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -110,9 +114,8 @@ func (p *PaymentProcessor) HandleNewInvoice(req *dto.NewInvoiceRequest) (*db.Inv
 	switch req.Coin {
 	case db.CoinTypeXMR:
 		return p.xmr.handleInvoicePbReq(p.ctx, req)
-	// TODO: Add impelmentation for BTC
 	case db.CoinTypeBTC:
-		return nil, unimplementedError
+		return p.btc.handleInvoicePbReq(p.ctx, req)
 	// TODO: Add impelmentation for LTC
 	case db.CoinTypeLTC:
 		return nil, unimplementedError
@@ -136,7 +139,11 @@ func (p *PaymentProcessor) NewInvoicesChan() <-chan db.Invoice {
 func NewPaymentProcessor(ctx context.Context, dbConnPool *pgxpool.Pool, c *dto.DaemonsConfig, log *zerolog.Logger) (*PaymentProcessor, error) {
 	invoiceCn := make(chan db.Invoice)
 
-	xmr, err := newXmrProcessor(dbConnPool, invoiceCn, c, log)
+	xmr, err := newXmrProcessor(log, dbConnPool, invoiceCn, c)
+	if err != nil {
+		return nil, err
+	}
+	btc, err := newBtcProcessor(log, dbConnPool, invoiceCn, c)
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +153,7 @@ func NewPaymentProcessor(ctx context.Context, dbConnPool *pgxpool.Pool, c *dto.D
 		invoiceCn:      invoiceCn,
 		newInvoicesCns: &util.SyncMapTypeSafe[string, chan db.Invoice]{},
 		xmr:            xmr,
+		btc:            btc,
 		ctx:            ctx,
 		log:            log,
 	}
