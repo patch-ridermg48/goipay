@@ -2,13 +2,12 @@ package listener
 
 import (
 	"context"
-	"errors"
-	"log"
 	"math/rand"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/chekist32/goipay/internal/db"
 	"github.com/chekist32/goipay/internal/util"
 	"github.com/chekist32/goipay/test"
 	"github.com/google/uuid"
@@ -17,42 +16,39 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type testTx struct {
-	TxId string
+type TestTx struct {
+	TxId          string
+	Confirmations uint64
 }
 
-func (b testTx) getTxId() string {
-	return b.TxId
+func (t TestTx) GetTxId() string {
+	return t.TxId
+}
+func (t TestTx) GetConfirmations() uint64 {
+	return t.Confirmations
+}
+func (t TestTx) IsDoubleSpendSeen() bool {
+	return false
 }
 
-type testBlock struct {
+type TestBlock struct {
 	Height uint64
 }
 
-type mockSharedDaemonRpcClient struct {
-	mock.Mock
-}
-
-func (m *mockSharedDaemonRpcClient) getLastBlockHeight() (uint64, error) {
-	args := m.Called()
-	return args.Get(0).(uint64), args.Error(1)
-}
-func (m *mockSharedDaemonRpcClient) getBlockByHeight(height uint64) (testBlock, error) {
-	args := m.Called(height)
-	return args.Get(0).(testBlock), args.Error(1)
-}
-func (m *mockSharedDaemonRpcClient) getTransactionPool() ([]testTx, error) {
-	args := m.Called()
-	return args.Get(0).([]testTx), args.Error(1)
+func (b TestBlock) GetTxHashes() []string {
+	return nil
 }
 
 func TestBlockChan(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Check NewBlockChan Func", func(t *testing.T) {
-		bdrce := newBaseDaemonRpcClientExecutor[testTx, testBlock](&zerolog.Logger{}, &mockSharedDaemonRpcClient{})
+		mockClient := NewMockSharedDaemonRpcClient[TestTx, TestBlock](t)
+		mockClient.On("GetCoinType").Return(db.CoinTypeXMR)
 
-		expectedBlock := testBlock{
+		bdrce := NewBaseDaemonRpcClientExecutor(&zerolog.Logger{}, mockClient)
+
+		expectedBlock := TestBlock{
 			Height: rand.Uint64(),
 		}
 
@@ -60,7 +56,7 @@ func TestBlockChan(t *testing.T) {
 		blockCnAmount.Store(0)
 
 		blockCn := bdrce.NewBlockChan()
-		bdrce.newBlockChns.Range(func(key string, value chan testBlock) bool {
+		bdrce.newBlockChns.Range(func(key string, value chan TestBlock) bool {
 			go func() {
 				blockCnAmount.Add(1)
 				value <- expectedBlock
@@ -69,7 +65,7 @@ func TestBlockChan(t *testing.T) {
 			return true
 		})
 
-		actualBlock := test.GetValueFromCnOrLogFatalWithTimeout[testBlock](blockCn, util.MIN_SYNC_TIMEOUT, "Timeout has been expired")
+		actualBlock := test.GetValueFromCnOrLogFatalWithTimeout(blockCn, util.MIN_SYNC_TIMEOUT, "Timeout has been expired")
 
 		assert.Equal(t, int32(1), blockCnAmount.Load())
 		assert.Equal(t, expectedBlock, actualBlock)
@@ -80,9 +76,12 @@ func TestTxPoolChan(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Check NewTxPoolChan Func", func(t *testing.T) {
-		bdrce := newBaseDaemonRpcClientExecutor[testTx, testBlock](&zerolog.Logger{}, &mockSharedDaemonRpcClient{})
+		mockClient := NewMockSharedDaemonRpcClient[TestTx, TestBlock](t)
+		mockClient.On("GetCoinType").Return(db.CoinTypeXMR)
 
-		expectedTx := testTx{
+		bdrce := NewBaseDaemonRpcClientExecutor(&zerolog.Logger{}, mockClient)
+
+		expectedTx := TestTx{
 			TxId: uuid.NewString(),
 		}
 
@@ -90,7 +89,7 @@ func TestTxPoolChan(t *testing.T) {
 		txPoolCnAmount.Store(0)
 
 		txPoolCn := bdrce.NewTxPoolChan()
-		bdrce.txPoolChns.Range(func(key string, value chan testTx) bool {
+		bdrce.txPoolChns.Range(func(key string, value chan TestTx) bool {
 			go func() {
 				txPoolCnAmount.Add(1)
 				value <- expectedTx
@@ -99,7 +98,7 @@ func TestTxPoolChan(t *testing.T) {
 			return true
 		})
 
-		actualTx := test.GetValueFromCnOrLogFatalWithTimeout[testTx](txPoolCn, util.MIN_SYNC_TIMEOUT, "Timeout has been expired")
+		actualTx := test.GetValueFromCnOrLogFatalWithTimeout(txPoolCn, util.MIN_SYNC_TIMEOUT, "Timeout has been expired")
 
 		assert.Equal(t, int32(1), txPoolCnAmount.Load())
 		assert.Equal(t, expectedTx, actualTx)
@@ -109,7 +108,10 @@ func TestTxPoolChan(t *testing.T) {
 func TestStartStop(t *testing.T) {
 	t.Parallel()
 
-	tbcrce := newBaseDaemonRpcClientExecutor[testTx, testBlock](&zerolog.Logger{}, &mockSharedDaemonRpcClient{})
+	mockClient := NewMockSharedDaemonRpcClient[TestTx, TestBlock](t)
+	mockClient.On("GetCoinType").Return(db.CoinTypeXMR)
+
+	tbcrce := NewBaseDaemonRpcClientExecutor(&zerolog.Logger{}, mockClient)
 
 	tbcrce.Start(0)
 	assert.NoError(t, tbcrce.ctx.Err())
@@ -124,23 +126,24 @@ func TestStartStop(t *testing.T) {
 func TestSyncBlock(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Succesfull syncBlock", func(t *testing.T) {
+	t.Run("Successful syncBlock", func(t *testing.T) {
 		lastBlockHeight := rand.Uint64()
-		d := new(mockSharedDaemonRpcClient)
-		d.On("getLastBlockHeight").Return(
+		d := NewMockSharedDaemonRpcClient[TestTx, TestBlock](t)
+		d.On("GetCoinType").Return(db.CoinTypeXMR)
+		d.On("GetLastBlockHeight").Return(
 			lastBlockHeight,
 			error(nil),
 		)
 
-		expectedBlock := testBlock{
+		expectedBlock := TestBlock{
 			Height: lastBlockHeight - 1,
 		}
-		d.On("getBlockByHeight", uint64(lastBlockHeight-1)).Return(
+		d.On("GetBlockByHeight", uint64(lastBlockHeight-1)).Return(
 			expectedBlock,
 			error(nil),
 		)
 
-		bdrce := newBaseDaemonRpcClientExecutor(&zerolog.Logger{}, d)
+		bdrce := NewBaseDaemonRpcClientExecutor(&zerolog.Logger{}, d)
 		bdrce.blockSync.lastBlockHeight.Store(lastBlockHeight - 1)
 		blockCn := bdrce.NewBlockChan()
 
@@ -155,21 +158,22 @@ func TestSyncBlock(t *testing.T) {
 
 	t.Run("MIN_SYNC_TIMEOUT exceeded", func(t *testing.T) {
 		lastBlockHeight := rand.Uint64()
-		d := new(mockSharedDaemonRpcClient)
-		d.On("getLastBlockHeight").Return(
+		d := NewMockSharedDaemonRpcClient[TestTx, TestBlock](t)
+		d.On("GetCoinType").Return(db.CoinTypeXMR)
+		d.On("GetLastBlockHeight").Return(
 			lastBlockHeight,
 			error(nil),
 		)
 
-		expectedBlock := testBlock{
+		expectedBlock := TestBlock{
 			Height: lastBlockHeight - 1,
 		}
-		d.On("getBlockByHeight", uint64(lastBlockHeight-1)).Return(
+		d.On("GetBlockByHeight", uint64(lastBlockHeight-1)).Return(
 			expectedBlock,
 			error(nil),
 		)
 
-		bdrce := newBaseDaemonRpcClientExecutor(&zerolog.Logger{}, d)
+		bdrce := NewBaseDaemonRpcClientExecutor(&zerolog.Logger{}, d)
 		bdrce.blockSync.lastBlockHeight.Store(lastBlockHeight - 1)
 		_ = bdrce.NewBlockChan()
 
@@ -179,7 +183,7 @@ func TestSyncBlock(t *testing.T) {
 		<-time.After(util.MIN_SYNC_TIMEOUT + 1*time.Second)
 
 		cnCount := 0
-		bdrce.newBlockChns.Range(func(key string, value chan testBlock) bool {
+		bdrce.newBlockChns.Range(func(key string, value chan TestBlock) bool {
 			cnCount++
 			return true
 		})
@@ -192,39 +196,43 @@ func TestSyncBlock(t *testing.T) {
 func TestSyncTransactionPool(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Succesfull syncTransactionPool", func(t *testing.T) {
+	t.Run("Successful syncTransactionPool", func(t *testing.T) {
 		// 1
-		expectedTxs1Map := map[string]testTx{
+		expectedTxs1Map := map[string]TestTx{
 			"tx1": {TxId: "tx1"},
 			"tx2": {TxId: "tx2"},
 			"tx3": {TxId: "tx3"},
 			"tx4": {TxId: "tx4"},
 			"tx5": {TxId: "tx5"},
 		}
-		expectedTxs1Slice := make([]testTx, 0)
+		expectedTxHashes1Slice := make([]string, 0)
 		for _, tx := range expectedTxs1Map {
-			expectedTxs1Slice = append(expectedTxs1Slice, tx)
+			expectedTxHashes1Slice = append(expectedTxHashes1Slice, tx.GetTxId())
 		}
 
-		d := new(mockSharedDaemonRpcClient)
-		d.On("getTransactionPool").Once().Return(
-			expectedTxs1Slice,
+		d := NewMockSharedDaemonRpcClient[TestTx, TestBlock](t)
+		d.On("GetCoinType").Return(db.CoinTypeXMR)
+		d.On("GetTransactionPool").Once().Return(
+			expectedTxHashes1Slice,
 			error(nil),
 		)
+		d.On("GetTransactions", mock.Anything).Return(func(txHashes []string) ([]TestTx, error) {
+			txs := make([]TestTx, 0, len(txHashes))
+			for i := 0; i < len(txHashes); i++ {
+				txs = append(txs, expectedTxs1Map[txHashes[i]])
+			}
+			return txs, nil
+		}).Times(len(expectedTxHashes1Slice))
 
-		bdrce := newBaseDaemonRpcClientExecutor(&zerolog.Logger{}, d)
+		bdrce := NewBaseDaemonRpcClientExecutor(&zerolog.Logger{}, d)
 		txPoolCn := bdrce.NewTxPoolChan()
 
 		bdrce.syncTransactionPool()
 
-		txs1 := make(map[string]testTx, 0)
+		txs1 := make(map[string]TestTx, 0)
 		for i := 0; i < len(expectedTxs1Map); i++ {
-			select {
-			case tx := <-txPoolCn:
-				txs1[tx.getTxId()] = tx
-			case <-time.After(util.MIN_SYNC_TIMEOUT):
-				log.Fatal(errors.New("Timeout has been expired"))
-			}
+			tx := test.GetValueFromCnOrLogFatalWithTimeout(txPoolCn, util.MIN_SYNC_TIMEOUT, "Timeout has been expired")
+			txs1[tx.GetTxId()] = tx
 		}
 
 		assert.Equal(t, expectedTxs1Map, txs1)
@@ -239,35 +247,38 @@ func TestSyncTransactionPool(t *testing.T) {
 		})
 
 		// 2
-		expectedTxs2Map := map[string]testTx{
+		expectedTxs2Map := map[string]TestTx{
 			"tx1": {TxId: "tx1"},
 			"tx3": {TxId: "tx3"},
 			"tx5": {TxId: "tx5"},
 			"tx7": {TxId: "tx7"},
 			"tx6": {TxId: "tx6"},
 		}
-		expectedTxs2Slice := make([]testTx, 0)
+		expectedTxHashes2Slice := make([]string, 0)
 		for _, tx := range expectedTxs2Map {
-			expectedTxs2Slice = append(expectedTxs2Slice, tx)
+			expectedTxHashes2Slice = append(expectedTxHashes2Slice, tx.GetTxId())
 		}
-		d.On("getTransactionPool").Return(
-			expectedTxs2Slice,
+		d.On("GetTransactionPool").Return(
+			expectedTxHashes2Slice,
 			error(nil),
 		)
+		d.On("GetTransactions", mock.Anything).Return(func(txHashes []string) ([]TestTx, error) {
+			txs := make([]TestTx, 0, len(txHashes))
+			for i := 0; i < len(txHashes); i++ {
+				txs = append(txs, expectedTxs2Map[txHashes[i]])
+			}
+			return txs, nil
+		})
 
 		bdrce.syncTransactionPool()
 
-		txs2 := make(map[string]testTx, 0)
+		txs2 := make(map[string]TestTx, 0)
 		for i := 0; i < 2; i++ {
-			select {
-			case tx := <-txPoolCn:
-				txs2[tx.getTxId()] = tx
-			case <-time.After(util.MIN_SYNC_TIMEOUT):
-				log.Fatal(errors.New("Timeout has been expired"))
-			}
+			tx := test.GetValueFromCnOrLogFatalWithTimeout(txPoolCn, util.MIN_SYNC_TIMEOUT, "Timeout has been expired")
+			txs2[tx.GetTxId()] = tx
 		}
 
-		assert.Equal(t, map[string]testTx{"tx7": {TxId: "tx7"}, "tx6": {TxId: "tx6"}}, txs2)
+		assert.Equal(t, map[string]TestTx{"tx7": {TxId: "tx7"}, "tx6": {TxId: "tx6"}}, txs2)
 		assert.Condition(t, func() (success bool) {
 			for id := range expectedTxs2Map {
 				if !bdrce.transactionPoolSync.txs[id] {
@@ -280,32 +291,40 @@ func TestSyncTransactionPool(t *testing.T) {
 	})
 
 	t.Run("MIN_SYNC_TIMEOUT exceeded", func(t *testing.T) {
-		expectedTxs1Map := map[string]testTx{
+		expectedTxs1Map := map[string]TestTx{
 			"tx1": {TxId: "tx1"},
 			"tx2": {TxId: "tx2"},
 			"tx3": {TxId: "tx3"},
 			"tx4": {TxId: "tx4"},
 			"tx5": {TxId: "tx5"},
 		}
-		expectedTxs1Slice := make([]testTx, 0)
+		expectedTxHashes1Slice := make([]string, 0)
 		for _, tx := range expectedTxs1Map {
-			expectedTxs1Slice = append(expectedTxs1Slice, tx)
+			expectedTxHashes1Slice = append(expectedTxHashes1Slice, tx.GetTxId())
 		}
 
-		d := new(mockSharedDaemonRpcClient)
-		d.On("getTransactionPool").Once().Return(
-			expectedTxs1Slice,
+		d := NewMockSharedDaemonRpcClient[TestTx, TestBlock](t)
+		d.On("GetCoinType").Return(db.CoinTypeXMR)
+		d.On("GetTransactionPool").Once().Return(
+			expectedTxHashes1Slice,
 			error(nil),
 		)
+		d.On("GetTransactions", mock.Anything).Return(func(txHashes []string) ([]TestTx, error) {
+			txs := make([]TestTx, 0, len(txHashes))
+			for i := 0; i < len(txHashes); i++ {
+				txs = append(txs, expectedTxs1Map[txHashes[i]])
+			}
+			return txs, nil
+		})
 
-		bdrce := newBaseDaemonRpcClientExecutor(&zerolog.Logger{}, d)
+		bdrce := NewBaseDaemonRpcClientExecutor(&zerolog.Logger{}, d)
 		_ = bdrce.NewTxPoolChan()
 
 		bdrce.syncTransactionPool()
 		<-time.After(util.MIN_SYNC_TIMEOUT + 1*time.Second)
 
 		cnCount := 0
-		bdrce.txPoolChns.Range(func(key string, value chan testTx) bool {
+		bdrce.txPoolChns.Range(func(key string, value chan TestTx) bool {
 			cnCount++
 			return true
 		})

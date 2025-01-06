@@ -5,9 +5,23 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/chekist32/goipay/internal/db"
 	"github.com/chekist32/goipay/internal/util"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+)
+
+type NetworkType uint8
+
+const (
+	MainnetXMR NetworkType = iota
+	StagenetXMR
+	TestnetXMR
+
+	MainnetBTC
+	TestnetBTC
+	RegtestBTC
+	SignetBTC
 )
 
 type transactionPoolSync struct {
@@ -18,17 +32,26 @@ type blockSync struct {
 	lastBlockHeight atomic.Uint64
 }
 
-type sharedTx interface {
-	getTxId() string
+type SharedTx interface {
+	GetTxId() string
+	GetConfirmations() uint64
+	IsDoubleSpendSeen() bool
 }
 
-type sharedDaemonRpcClient[T sharedTx, B any] interface {
-	getLastBlockHeight() (uint64, error)
-	getBlockByHeight(height uint64) (B, error)
-	getTransactionPool() ([]T, error)
+type SharedBlock interface {
+	GetTxHashes() []string
 }
 
-type DaemonRpcClientExecutor[T, B any] interface {
+type SharedDaemonRpcClient[T SharedTx, B SharedBlock] interface {
+	GetLastBlockHeight() (uint64, error)
+	GetBlockByHeight(height uint64) (B, error)
+	GetTransactionPool() ([]string, error)
+	GetTransactions(txHashes []string) ([]T, error)
+	GetNetworkType() (NetworkType, error)
+	GetCoinType() db.CoinType
+}
+
+type DaemonRpcClientExecutor[T SharedTx, B SharedBlock] interface {
 	Start(startBlock uint64)
 	Stop()
 	NewBlockChan() <-chan B
@@ -36,11 +59,13 @@ type DaemonRpcClientExecutor[T, B any] interface {
 	LastSyncedBlockHeight() uint64
 }
 
-type baseDaemonRpcClientExecutor[T sharedTx, B any] struct {
+type BaseDaemonRpcClientExecutor[T SharedTx, B SharedBlock] struct {
 	log *zerolog.Logger
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	coin db.CoinType
 
 	txPoolChns   *util.SyncMapTypeSafe[string, chan T]
 	newBlockChns *util.SyncMapTypeSafe[string, chan B]
@@ -48,10 +73,10 @@ type baseDaemonRpcClientExecutor[T sharedTx, B any] struct {
 	blockSync           blockSync
 	transactionPoolSync transactionPoolSync
 
-	client sharedDaemonRpcClient[T, B]
+	client SharedDaemonRpcClient[T, B]
 }
 
-func (d *baseDaemonRpcClientExecutor[T, B]) broadcastNewBlock(block *B) {
+func (d *BaseDaemonRpcClientExecutor[T, B]) broadcastNewBlock(block *B) {
 	d.newBlockChns.Range(func(key string, cn chan B) bool {
 		go func() {
 			select {
@@ -66,7 +91,7 @@ func (d *baseDaemonRpcClientExecutor[T, B]) broadcastNewBlock(block *B) {
 	})
 }
 
-func (d *baseDaemonRpcClientExecutor[T, B]) broadcastNewTx(tx *T) {
+func (d *BaseDaemonRpcClientExecutor[T, B]) broadcastNewTx(tx *T) {
 	d.txPoolChns.Range(func(key string, cn chan T) bool {
 		go func() {
 			select {
@@ -81,10 +106,10 @@ func (d *baseDaemonRpcClientExecutor[T, B]) broadcastNewTx(tx *T) {
 	})
 }
 
-func (d *baseDaemonRpcClientExecutor[T, B]) syncBlock() {
-	height, err := d.client.getLastBlockHeight()
+func (d *BaseDaemonRpcClientExecutor[T, B]) syncBlock() {
+	height, err := d.client.GetLastBlockHeight()
 	if err != nil {
-		d.log.Err(err).Str("method", "getLastBlockHeight").Msg(util.DefaultFailedFetchingDaemonMsg)
+		d.log.Err(err).Str("method", "GetLastBlockHeight").Str("coin", string(d.coin)).Msg(util.DefaultFailedFetchingDaemonMsg)
 		return
 	}
 
@@ -97,12 +122,12 @@ func (d *baseDaemonRpcClientExecutor[T, B]) syncBlock() {
 				return
 			}
 
-			block, err := d.client.getBlockByHeight(d.blockSync.lastBlockHeight.Load())
+			block, err := d.client.GetBlockByHeight(d.blockSync.lastBlockHeight.Load())
 			if err != nil {
-				d.log.Err(err).Str("method", "getBlockByHeight").Msg(util.DefaultFailedFetchingDaemonMsg)
+				d.log.Err(err).Str("method", "GetBlockByHeight").Str("coin", string(d.coin)).Msg(util.DefaultFailedFetchingDaemonMsg)
 				return
 			}
-			d.log.Info().Msgf("Synced blockheight: %v", height)
+			d.log.Info().Str("coin", string(d.coin)).Msgf("Synced blockheight: %v", height)
 
 			d.broadcastNewBlock(&block)
 
@@ -111,30 +136,37 @@ func (d *baseDaemonRpcClientExecutor[T, B]) syncBlock() {
 	}
 }
 
-func (d *baseDaemonRpcClientExecutor[T, B]) syncTransactionPool() {
-	txs, err := d.client.getTransactionPool()
+func (d *BaseDaemonRpcClientExecutor[T, B]) syncTransactionPool() {
+	txHashes, err := d.client.GetTransactionPool()
 	if err != nil {
-		d.log.Err(err).Str("method", "getTransactionPool").Msg(util.DefaultFailedFetchingDaemonMsg)
+		d.log.Err(err).Str("method", "GetTransactionPool").Str("coin", string(d.coin)).Msg(util.DefaultFailedFetchingDaemonMsg)
 		return
 	}
 
 	prevTxs := d.transactionPoolSync.txs
 	newTxs := make(map[string]bool)
 
-	for i := 0; i < len(txs); i++ {
-		newTxs[txs[i].getTxId()] = true
+	for i := 0; i < len(txHashes); i++ {
+		newTxs[txHashes[i]] = true
 
-		if prevTxs[txs[i].getTxId()] {
+		if prevTxs[txHashes[i]] {
 			continue
 		}
 
-		d.broadcastNewTx(&txs[i])
+		tx, err := d.client.GetTransactions([]string{txHashes[i]})
+		if err != nil || len(tx) < 1 {
+			d.log.Err(err).Str("method", "GetTransactions").Str("coin", string(d.coin)).Msg(util.DefaultFailedFetchingDaemonMsg)
+			continue
+		}
+
+		d.broadcastNewTx(&tx[0])
 	}
 
 	d.transactionPoolSync.txs = newTxs
+
 }
 
-func (d *baseDaemonRpcClientExecutor[T, B]) sync(blockTimeout time.Duration, txPoolTimeout time.Duration) {
+func (d *BaseDaemonRpcClientExecutor[T, B]) sync(blockTimeout time.Duration, txPoolTimeout time.Duration) {
 	go func() {
 		t := time.NewTicker(blockTimeout)
 		for {
@@ -160,7 +192,7 @@ func (d *baseDaemonRpcClientExecutor[T, B]) sync(blockTimeout time.Duration, txP
 	}()
 }
 
-func (d *baseDaemonRpcClientExecutor[T, B]) Start(startBlock uint64) {
+func (d *BaseDaemonRpcClientExecutor[T, B]) Start(startBlock uint64) {
 	if d.ctx.Err() == nil {
 		return
 	}
@@ -170,34 +202,35 @@ func (d *baseDaemonRpcClientExecutor[T, B]) Start(startBlock uint64) {
 	d.sync(util.MIN_SYNC_TIMEOUT, util.MIN_SYNC_TIMEOUT/2)
 }
 
-func (d *baseDaemonRpcClientExecutor[T, B]) Stop() {
+func (d *BaseDaemonRpcClientExecutor[T, B]) Stop() {
 	d.cancel()
 }
 
-func (d *baseDaemonRpcClientExecutor[T, B]) NewBlockChan() <-chan B {
+func (d *BaseDaemonRpcClientExecutor[T, B]) NewBlockChan() <-chan B {
 	cn := make(chan B)
 	d.newBlockChns.Store(uuid.NewString(), cn)
 	return cn
 }
 
-func (d *baseDaemonRpcClientExecutor[T, B]) NewTxPoolChan() <-chan T {
+func (d *BaseDaemonRpcClientExecutor[T, B]) NewTxPoolChan() <-chan T {
 	cn := make(chan T)
 	d.txPoolChns.Store(uuid.NewString(), cn)
 	return cn
 }
 
-func (d *baseDaemonRpcClientExecutor[T, B]) LastSyncedBlockHeight() uint64 {
+func (d *BaseDaemonRpcClientExecutor[T, B]) LastSyncedBlockHeight() uint64 {
 	return d.blockSync.lastBlockHeight.Load()
 }
 
-func newBaseDaemonRpcClientExecutor[T sharedTx, B any](log *zerolog.Logger, client sharedDaemonRpcClient[T, B]) *baseDaemonRpcClientExecutor[T, B] {
+func NewBaseDaemonRpcClientExecutor[T SharedTx, B SharedBlock](log *zerolog.Logger, client SharedDaemonRpcClient[T, B]) *BaseDaemonRpcClientExecutor[T, B] {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	return &baseDaemonRpcClientExecutor[T, B]{
+	return &BaseDaemonRpcClientExecutor[T, B]{
 		log:                 log,
 		ctx:                 ctx,
 		cancel:              cancel,
+		coin:                client.GetCoinType(),
 		client:              client,
 		transactionPoolSync: transactionPoolSync{txs: make(map[string]bool)},
 		txPoolChns:          &util.SyncMapTypeSafe[string, chan T]{},
