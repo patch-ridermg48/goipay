@@ -47,34 +47,6 @@ func createNewTestXMRDaemon() daemon.IDaemonRpcClient {
 	return daemon.NewDaemonRpcClient(daemon.NewRpcConnection(u, "", ""))
 }
 
-// func createNewTestXmrProcessor() (chan db.Invoice, *xmrProcessor, testcontainers.Container, func(ctx context.Context)) {
-// 	invoiceCn := make(chan db.Invoice)
-// 	pendingInvoices := new(util.SyncMapTypeSafe[string, pendingInvoice])
-// 	dbConn, postgres, close := test.SpinUpPostgresContainerAndGetPgxpool(fmt.Sprintf("%v/../../sql/migrations", os.Getenv("PWD")))
-
-// 	d, err := createNewTestDaemon(xmr_daemon_addr, "", "")
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	xmr := &xmrProcessor{
-// 		daemon:   d,
-// 		daemonEx: listener.NewXMRDaemonRpcClientExecutor(d, &zerolog.Logger{}),
-// 		network:  utils.Stagenet,
-// 		baseCryptoProcessor: baseCryptoProcessor{
-// 			log:             &zerolog.Logger{},
-// 			dbConnPool:      dbConn,
-// 			invoiceCn:       invoiceCn,
-// 			pendingInvoices: pendingInvoices,
-// 		},
-// 	}
-
-// 	return invoiceCn,
-// 		xmr,
-// 		postgres,
-// 		close
-// }
-
 func getPostgresWithDbConn() (*pgxpool.Pool, testcontainers.Container, func(ctx context.Context)) {
 	return test.SpinUpPostgresContainerAndGetPgxpool(fmt.Sprintf("%v/../../sql/migrations", os.Getenv("PWD")))
 }
