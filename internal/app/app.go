@@ -68,6 +68,9 @@ type AppConfig struct {
 		Xmr struct {
 			Daemon AppConfigDaemon `yaml:"daemon"`
 		} `yaml:"xmr"`
+		Btc struct {
+			Daemon AppConfigDaemon `yaml:"daemon"`
+		} `yaml:"btc"`
 	} `yaml:"coin"`
 }
 
@@ -99,6 +102,10 @@ func NewAppConfig(path string) (*AppConfig, error) {
 	conf.Coin.Xmr.Daemon.Url = os.ExpandEnv(conf.Coin.Xmr.Daemon.Url)
 	conf.Coin.Xmr.Daemon.User = os.ExpandEnv(conf.Coin.Xmr.Daemon.User)
 	conf.Coin.Xmr.Daemon.Pass = os.ExpandEnv(conf.Coin.Xmr.Daemon.Pass)
+
+	conf.Coin.Btc.Daemon.Url = os.ExpandEnv(conf.Coin.Btc.Daemon.Url)
+	conf.Coin.Btc.Daemon.User = os.ExpandEnv(conf.Coin.Btc.Daemon.User)
+	conf.Coin.Btc.Daemon.Pass = os.ExpandEnv(conf.Coin.Btc.Daemon.Pass)
 
 	return &conf, nil
 }
@@ -250,7 +257,8 @@ func appConfigToDaemonsConfig(c *AppConfig) *dto.DaemonsConfig {
 	}
 
 	return &dto.DaemonsConfig{
-		Xmr: *acdTodc(&c.Coin.Xmr.Daemon),
+		Xmr: dto.XMRDaemonConfig(*acdTodc(&c.Coin.Xmr.Daemon)),
+		Btc: dto.BTCDaemonConfig(*acdTodc(&c.Coin.Btc.Daemon)),
 	}
 }
 
@@ -276,7 +284,7 @@ func NewApp(opts CliOpts) *App {
 
 	pp, err := processor.NewPaymentProcessor(ctx, connPool, appConfigToDaemonsConfig(conf), log)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("")
 	}
 
 	return &App{

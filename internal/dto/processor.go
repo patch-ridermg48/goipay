@@ -15,7 +15,10 @@ type DaemonConfig struct {
 	User string
 	Pass string
 }
+type XMRDaemonConfig DaemonConfig
+type BTCDaemonConfig DaemonConfig
 
 type DaemonsConfig struct {
-	Xmr DaemonConfig
+	Xmr XMRDaemonConfig
+	Btc BTCDaemonConfig
 }
