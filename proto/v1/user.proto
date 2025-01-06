@@ -14,6 +14,7 @@ message RegisterUserResponse {
 message UpdateCryptoKeysRequest {
     string userId = 1;
     optional crypto.v1.XmrKeysUpdateRequest xmrReq = 2;
+    optional crypto.v1.BtcKeysUpdateRequest btcReq = 3;
 }
 message UpdateCryptoKeysResponse {}
 
