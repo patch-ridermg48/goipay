@@ -31,4 +31,4 @@ gen-mocks:
 	mockery --dir=internal/processor --all --inpackage
 
 coverage:
-	go test -coverprofile=.coverage.out -coverpkg=./internal/handler,./internal/listener,./internal/processor,./internal/util,./internal/db ./... && go tool cover -html=.coverage.out -o .coverage.html
+	go test -timeout 600s -coverprofile=.coverage.out -coverpkg=./internal/handler,./internal/listener,./internal/processor,./internal/util,./internal/db ./... && go tool cover -html=.coverage.out -o .coverage.html
