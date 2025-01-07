@@ -307,6 +307,8 @@ func TestPersistCryptoCache(t *testing.T) {
 		d := listener.NewMockSharedDaemonRpcClient[TestTx, TestBlock](t)
 		d.On("GetNetworkType").Return(listener.StagenetXMR, error(nil))
 		d.On("GetCoinType").Return(expectedCoin)
+		d.On("GetLastBlockHeight").Return(expectedLastHeight, error(nil)).Maybe()
+		d.On("GetTransactionPool").Return([]string{}, error(nil)).Maybe()
 
 		_, p, _, close := createNewTestBaseCryptoProcessor(
 			d,
@@ -589,6 +591,7 @@ func TestLoad(t *testing.T) {
 	d.On("GetNetworkType").Return(listener.StagenetXMR, error(nil))
 	d.On("GetCoinType").Return(db.CoinTypeXMR)
 	d.On("GetLastBlockHeight").Return(expectedLastHeight, error(nil))
+	d.On("GetTransactionPool").Return([]string{}, error(nil)).Maybe()
 	_, p, _, close := createNewTestBaseCryptoProcessor(
 		d,
 		func(ctx context.Context, q *db.Queries, data *verifyTxHandlerData[TestTx]) (float64, error) {
