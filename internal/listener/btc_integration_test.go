@@ -11,9 +11,9 @@ import (
 
 func getBTCDaemonRpcClient() *rpcclient.Client {
 	connCfg := &rpcclient.ConnConfig{
-		Host:         "node.exaion.com/api/v1/8a7e0d5b-ae3c-4585-8a71-a99225932226/rpc",
-		User:         "user",
-		Pass:         "pass",
+		Host:         "nd-457-466-409.p2pify.com/a11fc6c0ed68edbea7096b4bd950db15",
+		User:         "angry-kowalevski",
+		Pass:         "galley-zone-nectar-swerve-unread-sprang",
 		HTTPPostMode: true,
 		DisableTLS:   false,
 	}
