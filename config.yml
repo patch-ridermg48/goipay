@@ -20,3 +20,8 @@ coin:
       url: ${XMR_DAEMON_URL}
       user: ${XMR_DAEMON_USER}
       pass: ${XMR_DAEMON_PASS}
+  btc:
+    daemon:
+      url: ${BTC_DAEMON_URL}
+      user: ${BTC_DAEMON_USER}
+      pass: ${BTC_DAEMON_PASS}

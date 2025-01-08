@@ -1,189 +1,107 @@
 package listener
 
 import (
-	"context"
-	"sync/atomic"
-	"time"
-
 	"github.com/chekist32/go-monero/daemon"
-	"github.com/chekist32/goipay/internal/util"
-	"github.com/google/uuid"
+	"github.com/chekist32/goipay/internal/db"
 	"github.com/rs/zerolog"
 )
 
-type transactionPoolSync struct {
-	txs map[string]bool
+type XMRTx daemon.MoneroTx1
+
+func (t XMRTx) GetTxId() string {
+	return t.TxHash
+}
+func (t XMRTx) GetConfirmations() uint64 {
+	return t.Confirmations
+}
+func (t XMRTx) IsDoubleSpendSeen() bool {
+	return t.DoubleSpendSeen
 }
 
-type blockSync struct {
-	lastBlockHeight atomic.Uint64
+type XMRBlock daemon.GetBlockResult
+
+func (b XMRBlock) GetTxHashes() []string {
+	return b.BlockDetails.TxHashes
 }
 
-type DaemonRpcClientExecutor struct {
-	log *zerolog.Logger
-
+type SharedXMRDaemonRpcClient struct {
 	client daemon.IDaemonRpcClient
-
-	txPoolChns   *util.SyncMapTypeSafe[string, chan daemon.MoneroTx]
-	newBlockChns *util.SyncMapTypeSafe[string, chan daemon.GetBlockResult]
-
-	isStarted bool
-	stop      chan struct{}
-
-	blockSync           blockSync
-	transactionPoolSync transactionPoolSync
 }
 
-func (d *DaemonRpcClientExecutor) syncBlock(ctx context.Context) {
-	height, err := d.client.GetLastBlockHeader(true)
+func (c *SharedXMRDaemonRpcClient) GetLastBlockHeight() (uint64, error) {
+	res, err := c.client.GetLastBlockHeader(true)
 	if err != nil {
-		d.log.Err(err).Str("method", "last_block_header").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
-		return
+		return 0, err
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			if height.Result.BlockHeader.Height <= d.blockSync.lastBlockHeight.Load() {
-				return
-			}
-
-			block, err := d.client.GetBlockByHeight(true, d.blockSync.lastBlockHeight.Load())
-			if err != nil {
-				d.log.Err(err).Str("method", "get_block").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
-				return
-			}
-			d.log.Info().Msgf("Synced blockheight: %v", block.Result.BlockHeader.Height)
-
-			d.newBlockChns.Range(func(key string, cn chan daemon.GetBlockResult) bool {
-				go func() {
-					select {
-					case cn <- block.Result:
-						return
-					case <-time.After(MIN_SYNC_TIMEOUT):
-						d.newBlockChns.Delete(key)
-						return
-					}
-				}()
-				return true
-			})
-
-			d.blockSync.lastBlockHeight.Add(1)
-		}
-	}
+	return res.Result.BlockHeader.Height, nil
 }
-
-func (d *DaemonRpcClientExecutor) syncTransactionPool() {
-	txs, err := d.client.GetTransactionPool()
+func (c *SharedXMRDaemonRpcClient) GetBlockByHeight(height uint64) (XMRBlock, error) {
+	res, err := c.client.GetBlockByHeight(true, height)
 	if err != nil {
-		d.log.Err(err).Str("method", "get_transaction_pool").Msg(util.DefaultFailedFetchingXMRDaemonMsg)
-		return
+		return XMRBlock{}, err
 	}
 
-	fetchedTxs := txs.Transactions
-	prevTxs := d.transactionPoolSync.txs
-	newTxs := make(map[string]bool)
-
-	for i := 0; i < len(fetchedTxs); i++ {
-		newTxs[fetchedTxs[i].IdHash] = true
-
-		if prevTxs[fetchedTxs[i].IdHash] {
-			continue
-		}
-
-		d.txPoolChns.Range(func(key string, cn chan daemon.MoneroTx) bool {
-			go func() {
-				select {
-				case cn <- fetchedTxs[i]:
-					return
-				case <-time.After(MIN_SYNC_TIMEOUT):
-					d.txPoolChns.Delete(key)
-					return
-				}
-			}()
-
-			return true
-		})
+	return XMRBlock(res.Result), nil
+}
+func (c *SharedXMRDaemonRpcClient) GetTransactionPool() ([]string, error) {
+	res, err := c.client.GetTransactionPool()
+	if err != nil {
+		return nil, err
 	}
 
-	d.transactionPoolSync.txs = newTxs
-}
-
-func (d *DaemonRpcClientExecutor) sync(blockTimeout time.Duration, txPoolTimeout time.Duration) {
-	t1 := time.NewTicker(blockTimeout)
-	t2 := time.NewTicker(txPoolTimeout)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go func() {
-		for {
-			s := ctx.Done()
-			select {
-			case <-s:
-				return
-			case <-t1.C:
-				d.syncBlock(ctx)
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			s := ctx.Done()
-			select {
-			case <-s:
-				return
-			case <-t2.C:
-				d.syncTransactionPool()
-			}
-		}
-	}()
-
-	<-d.stop
-	d.isStarted = false
-}
-
-func (d *DaemonRpcClientExecutor) Start(startBlock uint64) {
-	if d.isStarted {
-		return
+	txHashes := make([]string, 0, len(res.Transactions))
+	for i := 0; i < len(res.Transactions); i++ {
+		txHashes = append(txHashes, res.Transactions[i].IdHash)
 	}
-	d.isStarted = true
-	d.blockSync.lastBlockHeight.Store(startBlock)
 
-	go d.sync(MIN_SYNC_TIMEOUT, MIN_SYNC_TIMEOUT/2)
+	return txHashes, nil
 }
 
-func (d *DaemonRpcClientExecutor) Stop() {
-	d.stop <- struct{}{}
-}
-
-func (d *DaemonRpcClientExecutor) NewBlockChan() <-chan daemon.GetBlockResult {
-	cn := make(chan daemon.GetBlockResult)
-	d.newBlockChns.Store(uuid.NewString(), cn)
-	return cn
-}
-
-func (d *DaemonRpcClientExecutor) NewTxPoolChan() <-chan daemon.MoneroTx {
-	cn := make(chan daemon.MoneroTx)
-	d.txPoolChns.Store(uuid.NewString(), cn)
-	return cn
-}
-
-func (d *DaemonRpcClientExecutor) LastSyncedBlockHeight() uint64 {
-	return d.blockSync.lastBlockHeight.Load()
-}
-
-func NewDaemonRpcClientExecutor(client daemon.IDaemonRpcClient, log *zerolog.Logger) *DaemonRpcClientExecutor {
-	return &DaemonRpcClientExecutor{
-		log:                 log,
-		client:              client,
-		transactionPoolSync: transactionPoolSync{txs: make(map[string]bool)},
-		isStarted:           false,
-		stop:                make(chan struct{}),
-		txPoolChns:          &util.SyncMapTypeSafe[string, chan daemon.MoneroTx]{},
-		newBlockChns:        &util.SyncMapTypeSafe[string, chan daemon.GetBlockResult]{},
+func (c *SharedXMRDaemonRpcClient) GetTransactions(txHashes []string) ([]XMRTx, error) {
+	res, err := c.client.GetTransactions(txHashes, true, false, false)
+	if err != nil {
+		return nil, err
 	}
+
+	txs := make([]XMRTx, 0, len(res.Txs))
+	for i := 0; i < len(res.Txs); i++ {
+		txs = append(txs, XMRTx(res.Txs[i]))
+	}
+
+	return txs, nil
+}
+
+func (c *SharedXMRDaemonRpcClient) GetNetworkType() (NetworkType, error) {
+	res, err := c.client.GetInfo()
+	if err != nil {
+		return 255, err
+	}
+
+	net := MainnetXMR
+	if res.Result.Testnet {
+		net = TestnetXMR
+	} else if res.Result.Stagenet {
+		net = StagenetXMR
+	}
+
+	return net, nil
+}
+
+func (c *SharedXMRDaemonRpcClient) GetCoinType() db.CoinType {
+	return db.CoinTypeXMR
+}
+
+type XMRDaemonRpcClientExecutor struct {
+	BaseDaemonRpcClientExecutor[XMRTx, XMRBlock]
+}
+
+func NewXMRDaemonRpcClientExecutor(log *zerolog.Logger, client daemon.IDaemonRpcClient) *XMRDaemonRpcClientExecutor {
+	return &XMRDaemonRpcClientExecutor{
+		BaseDaemonRpcClientExecutor: *NewBaseDaemonRpcClientExecutor(log, &SharedXMRDaemonRpcClient{client: client}),
+	}
+}
+
+func NewSharedXMRDaemonRpcClient(client daemon.IDaemonRpcClient) *SharedXMRDaemonRpcClient {
+	return &SharedXMRDaemonRpcClient{client: client}
 }

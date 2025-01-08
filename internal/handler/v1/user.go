@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/chekist32/go-monero/utils"
 	"github.com/chekist32/goipay/internal/db"
 	pb_v1 "github.com/chekist32/goipay/internal/pb/v1"
@@ -111,6 +112,40 @@ func (u *UserGrpc) handleXmrCryptoDataUpdate(ctx context.Context, q *db.Queries,
 	return nil
 }
 
+func (u *UserGrpc) handleBtcCryptoDataUpdate(ctx context.Context, q *db.Queries, in *pb_v1.BtcKeysUpdateRequest, cryptData *db.CryptoDatum) error {
+	_, err := hdkeychain.NewKeyFromString(in.MasterPubKey)
+	if err != nil {
+		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("An error occurred while creating the BTC master public key.")
+		return status.Error(codes.InvalidArgument, "Invalid BTC master public key.")
+	}
+
+	_, err = q.DeleteAllCryptoAddressByUserIdAndCoin(ctx, db.DeleteAllCryptoAddressByUserIdAndCoinParams{Coin: db.CoinTypeBTC, UserID: cryptData.UserID})
+	if err != nil {
+		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "DeleteAllCryptoAddressByUserIdAndCoin").Msg(util.DefaultFailedSqlQueryMsg)
+		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+	}
+
+	if !cryptData.BtcID.Valid {
+		btcData, err := q.CreateBTCCryptoData(ctx, in.MasterPubKey)
+		if err != nil {
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "CreateBTCCryptoData").Msg(util.DefaultFailedSqlQueryMsg)
+			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+		}
+		_, err = q.SetBTCCryptoDataByUserId(ctx, db.SetBTCCryptoDataByUserIdParams{UserID: cryptData.UserID, BtcID: btcData.ID})
+		if err != nil {
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "SetBTCCryptoDataByUserId").Msg(util.DefaultFailedSqlQueryMsg)
+			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+		}
+		return nil
+	}
+	_, err = q.UpdateKeysBTCCryptoDataById(ctx, db.UpdateKeysBTCCryptoDataByIdParams{ID: cryptData.BtcID, MasterPubKey: in.MasterPubKey})
+	if err != nil {
+		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+	}
+
+	return nil
+}
+
 func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoKeysRequest) (*pb_v1.UpdateCryptoKeysResponse, error) {
 	q, tx, err := util.InitDbQueriesWithTx(ctx, u.dbConnPool)
 	if err != nil {
@@ -137,6 +172,12 @@ func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoK
 
 	if in.XmrReq != nil {
 		if err := u.handleXmrCryptoDataUpdate(ctx, q, in.XmrReq, &cryptData); err != nil {
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("")
+			return nil, err
+		}
+	}
+	if in.BtcReq != nil {
+		if err := u.handleBtcCryptoDataUpdate(ctx, q, in.BtcReq, &cryptData); err != nil {
 			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("")
 			return nil, err
 		}
