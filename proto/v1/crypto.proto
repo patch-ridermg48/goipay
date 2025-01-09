@@ -18,8 +18,3 @@ message XmrKeysUpdateRequest {
 message BtcKeysUpdateRequest {
     string masterPubKey = 1;
 }
-
-message XmrKeys {
-   string privViewKey = 1;
-   string pubSpendKey = 2;
-}
