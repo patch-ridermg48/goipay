@@ -29,22 +29,26 @@ A lightweight crypto payment processor microservice, written in Golang, designed
   ```ini
   SERVER_HOST=0.0.0.0
   SERVER_PORT=3000
-
+  
   SERVER_TLS_MODE=tls
   SERVER_TLS_CA=/app/cert/server/ca.crt
   SERVER_TLS_CERT=/app/cert/server/server.crt
   SERVER_TLS_KEY=/app/cert/server/server.key
-
+  
   # As for now, only PostgreSQL is supported
   DATABASE_HOST=db
   DATABASE_PORT=5432
   DATABASE_USER=postgres
   DATABASE_PASS=postgres
   DATABASE_NAME=goipay_db
-
+  
   XMR_DAEMON_URL=http://node.monerodevs.org:38089
   XMR_DAEMON_USER=
   XMR_DAEMON_PASS=
+  
+  BTC_DAEMON_URL=http://localhost:38332
+  BTC_DAEMON_USER=user
+  BTC_DAEMON_PASS=pass
   ```
 - Inside the root dir you can find an example ```docker-compose.yml``` file. For testing purposes can be run without editing.
   ```sh
