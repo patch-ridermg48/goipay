@@ -1,5 +1,5 @@
 -- name: CreateCryptoData :one
-INSERT INTO crypto_data(xmr_id, user_id) VALUES ($1, $2)
+INSERT INTO crypto_data(xmr_id, btc_id, user_id) VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: FindCryptoDataByUserId :one
