@@ -54,7 +54,30 @@ A lightweight crypto payment processor microservice, written in Golang, designed
   ```sh
   docker compose up
   ```
+#### Native
+- Clone the repo
+  ```sh
+  git clone https://github.com/goipay/goipay.git
+  ```
+- Build using [`make`](https://man7.org/linux/man-pages/man1/make.1.html)
+  ```sh
+  cd goipay && make build
+  ```
+Under the `bin` folder you will find `server` binary
+```sh
+./bin/server -h
 
+Usage of ./bin/server:
+  -client-ca string
+        Comma-separated list of paths to client certificate authority files (for mTLS)
+  -config string
+        Path to the config file (default "config.yml")
+  -log-level string
+        Defines the logging level
+  -reflection
+        Enables gRPC server reflection
+```
+  
 ## Usage
 
 - Get a quick overview of how GoiPay works by watching this [simple showcase video](https://youtu.be/b6TJBiHKJXE?feature=shared).
