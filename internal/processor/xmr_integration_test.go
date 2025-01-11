@@ -110,7 +110,7 @@ func TestGenerateNextXmrAddressHandler(t *testing.T) {
 
 }
 
-func TestVerifyMoneroTxOnTxMempool(t *testing.T) {
+func TestVerifyXMRTxHandler(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
