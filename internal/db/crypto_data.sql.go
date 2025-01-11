@@ -30,17 +30,18 @@ func (q *Queries) CreateBTCCryptoData(ctx context.Context, masterPubKey string) 
 }
 
 const createCryptoData = `-- name: CreateCryptoData :one
-INSERT INTO crypto_data(xmr_id, user_id) VALUES ($1, $2)
+INSERT INTO crypto_data(xmr_id, btc_id, user_id) VALUES ($1, $2, $3)
 RETURNING user_id, xmr_id, btc_id
 `
 
 type CreateCryptoDataParams struct {
 	XmrID  pgtype.UUID
+	BtcID  pgtype.UUID
 	UserID pgtype.UUID
 }
 
 func (q *Queries) CreateCryptoData(ctx context.Context, arg CreateCryptoDataParams) (CryptoDatum, error) {
-	row := q.db.QueryRow(ctx, createCryptoData, arg.XmrID, arg.UserID)
+	row := q.db.QueryRow(ctx, createCryptoData, arg.XmrID, arg.BtcID, arg.UserID)
 	var i CryptoDatum
 	err := row.Scan(&i.UserID, &i.XmrID, &i.BtcID)
 	return i, err
