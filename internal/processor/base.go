@@ -16,6 +16,10 @@ import (
 	"github.com/rs/zerolog"
 )
 
+var (
+	unsupportedCoin error = errors.New("coin is unsupported by crypto processor")
+)
+
 type pendingInvoice struct {
 	invoice           *atomic.Pointer[db.Invoice]
 	cancelTimeoutFunc context.CancelFunc
@@ -29,6 +33,12 @@ type verifyTxHandlerData[T listener.SharedTx] struct {
 type generateNextAddressHandlerData struct {
 	userId  pgtype.UUID
 	network listener.NetworkType
+}
+
+type cryptoProcessor interface {
+	load(ctx context.Context) error
+	handleInvoicePbReq(ctx context.Context, req *dto.NewInvoiceRequest) (*db.Invoice, error)
+	handleInvoice(ctx context.Context, invoice db.Invoice)
 }
 
 type baseCryptoProcessor[T listener.SharedTx, B listener.SharedBlock] struct {
@@ -321,6 +331,10 @@ func (b *baseCryptoProcessor[T, B]) createInvoice(ctx context.Context, req *dto.
 }
 
 func (b *baseCryptoProcessor[T, B]) handleInvoicePbReq(ctx context.Context, req *dto.NewInvoiceRequest) (*db.Invoice, error) {
+	if b.coin != req.Coin {
+		return nil, unsupportedCoin
+	}
+
 	invoice, err := b.createInvoice(ctx, req)
 	if err != nil {
 		return nil, err
