@@ -36,9 +36,9 @@ func createUserWithBtcData(ctx context.Context, q *db.Queries) (pgtype.UUID, db.
 
 func createNewTestBtcDaemon() *rpcclient.Client {
 	connCfg := &rpcclient.ConnConfig{
-		Host:         "rpc.ankr.com/btc_signet/abe7e45a955c46d234a46d1f4534dfeff3a7bdeaf2cee815afd69c0e3949df32",
-		User:         "user",
-		Pass:         "pass",
+		Host:         "nd-457-466-409.p2pify.com/a11fc6c0ed68edbea7096b4bd950db15",
+		User:         "angry-kowalevski",
+		Pass:         "galley-zone-nectar-swerve-unread-sprang",
 		HTTPPostMode: true,
 		DisableTLS:   false,
 	}
@@ -125,12 +125,12 @@ func TestVerifyBTCTxHandler(t *testing.T) {
 			q := db.New(dbConn).WithTx(tx)
 			userId, _, _ := createUserWithXmrData(ctx, q)
 
-			expectedTxId := "ea217d3fd466c86d4fea6759b6b12cc62ec9a13b30042941e03ae84e6d748e9f"
+			expectedTxId := "ca2329777b4c886750347b5bf6e53d5dabc0b4f0cfe5fb3694c569d845eb1abd"
 			expectedInvoice, err := q.CreateInvoice(ctx, db.CreateInvoiceParams{
 				UserID:                userId,
 				Coin:                  db.CoinTypeBTC,
-				CryptoAddress:         "tb1qpmtec0cq470g9uwsjdhkjvzzczusynsz4ltejd",
-				RequiredAmount:        0.00019522,
+				CryptoAddress:         "bc1q8e8qkxqtgfypwwnh6zf5msx82yw2p4l9sy26ey",
+				RequiredAmount:        0.00480740,
 				ExpiresAt:             pgtype.Timestamptz{Time: time.Now().Add(time.Minute), Valid: true},
 				ConfirmationsRequired: 0,
 			})
@@ -160,12 +160,12 @@ func TestVerifyBTCTxHandler(t *testing.T) {
 			q := db.New(dbConn).WithTx(tx)
 			userId, _, _ := createUserWithBtcData(ctx, q)
 
-			expectedTxId := "b6cf23d11dfd4551107b8022a25fafaf0f421c569765a7347c59cedfa6b3007c"
+			expectedTxId := "b1c496d9e3bd4eeff0b33d0ce6b5c2541244cc71f1fc4051aff83b77c8dabf80"
 			expectedInvoice, err := q.CreateInvoice(ctx, db.CreateInvoiceParams{
 				UserID:                userId,
 				Coin:                  db.CoinTypeBTC,
-				CryptoAddress:         "tb1qpmtec0cq470g9uwsjdhkjvzzczusynsz4ltejd",
-				RequiredAmount:        0.00019522,
+				CryptoAddress:         "bc1q8e8qkxqtgfypwwnh6zf5msx82yw2p4l9sy26ey",
+				RequiredAmount:        0.00480740,
 				ExpiresAt:             pgtype.Timestamptz{Time: time.Now().Add(time.Minute), Valid: true},
 				ConfirmationsRequired: 0,
 			})
