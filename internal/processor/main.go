@@ -18,7 +18,7 @@ const (
 )
 
 var (
-	unimplementedError error = errors.New("The coin is unimplemented")
+	unimplementedError error = errors.New("coin is either unimplemented or not set up")
 )
 
 type PaymentProcessor struct {
@@ -30,8 +30,7 @@ type PaymentProcessor struct {
 	invoiceCn      chan db.Invoice
 	newInvoicesCns *util.SyncMapTypeSafe[string, chan db.Invoice]
 
-	xmr *xmrProcessor
-	btc *btcProcessor
+	cryptoProcessors map[db.CoinType]cryptoProcessor
 }
 
 func (p *PaymentProcessor) loadPersistedPendingInvoices() error {
@@ -50,18 +49,12 @@ func (p *PaymentProcessor) loadPersistedPendingInvoices() error {
 
 	tx.Commit(p.ctx)
 
+	// TODO: Add impelmentation for LTC
+	// TODO: Add impelmentation for ETH
+	// TODO: Add impelmentation for TON
 	for i := 0; i < len(invoices); i++ {
-		switch invoices[i].Coin {
-		case db.CoinTypeXMR:
-			go p.xmr.handleInvoice(p.ctx, invoices[i])
-		case db.CoinTypeBTC:
-			go p.btc.handleInvoice(p.ctx, invoices[i])
-		// TODO: Add impelmentation for LTC
-		case db.CoinTypeLTC:
-		// TODO: Add impelmentation for ETH
-		case db.CoinTypeETH:
-		// TODO: Add impelmentation for TON
-		case db.CoinTypeTON:
+		if cp, ok := p.cryptoProcessors[invoices[i].Coin]; ok {
+			cp.handleInvoice(p.ctx, invoices[i])
 		}
 	}
 
@@ -100,34 +93,24 @@ func (p *PaymentProcessor) load() error {
 		return err
 	}
 
-	if err := p.xmr.load(p.ctx); err != nil {
-		return err
-	}
-	if err := p.btc.load(p.ctx); err != nil {
-		return err
+	for _, v := range p.cryptoProcessors {
+		if err := v.load(p.ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (p *PaymentProcessor) HandleNewInvoice(req *dto.NewInvoiceRequest) (*db.Invoice, error) {
-	switch req.Coin {
-	case db.CoinTypeXMR:
-		return p.xmr.handleInvoicePbReq(p.ctx, req)
-	case db.CoinTypeBTC:
-		return p.btc.handleInvoicePbReq(p.ctx, req)
-	// TODO: Add impelmentation for LTC
-	case db.CoinTypeLTC:
-		return nil, unimplementedError
-	// TODO: Add impelmentation for ETH
-	case db.CoinTypeETH:
-		return nil, unimplementedError
 	// TODO: Add impelmentation for TON
-	case db.CoinTypeTON:
-		return nil, unimplementedError
+	// TODO: Add impelmentation for ETH
+	// TODO: Add impelmentation for LTC
+	if cp, ok := p.cryptoProcessors[req.Coin]; ok {
+		return cp.handleInvoicePbReq(p.ctx, req)
 	}
 
-	return nil, errors.New("invalid coin type")
+	return nil, unimplementedError
 }
 
 func (p *PaymentProcessor) NewInvoicesChan() <-chan db.Invoice {
@@ -138,24 +121,30 @@ func (p *PaymentProcessor) NewInvoicesChan() <-chan db.Invoice {
 
 func NewPaymentProcessor(ctx context.Context, dbConnPool *pgxpool.Pool, c *dto.DaemonsConfig, log *zerolog.Logger) (*PaymentProcessor, error) {
 	invoiceCn := make(chan db.Invoice)
+	cryptoProcessors := make(map[db.CoinType]cryptoProcessor, 0)
 
-	xmr, err := newXmrProcessor(log, dbConnPool, invoiceCn, c)
-	if err != nil {
-		return nil, err
+	if c.Xmr.Url != "" {
+		xmr, err := newXmrProcessor(log, dbConnPool, invoiceCn, c)
+		if err != nil {
+			return nil, err
+		}
+		cryptoProcessors[xmr.coin] = xmr
 	}
-	btc, err := newBtcProcessor(log, dbConnPool, invoiceCn, c)
-	if err != nil {
-		return nil, err
+	if c.Btc.Url != "" {
+		btc, err := newBtcProcessor(log, dbConnPool, invoiceCn, c)
+		if err != nil {
+			return nil, err
+		}
+		cryptoProcessors[btc.coin] = btc
 	}
 
 	pp := &PaymentProcessor{
-		dbConnPool:     dbConnPool,
-		invoiceCn:      invoiceCn,
-		newInvoicesCns: &util.SyncMapTypeSafe[string, chan db.Invoice]{},
-		xmr:            xmr,
-		btc:            btc,
-		ctx:            ctx,
-		log:            log,
+		dbConnPool:       dbConnPool,
+		invoiceCn:        invoiceCn,
+		newInvoicesCns:   &util.SyncMapTypeSafe[string, chan db.Invoice]{},
+		cryptoProcessors: cryptoProcessors,
+		ctx:              ctx,
+		log:              log,
 	}
 	if err := pp.load(); err != nil {
 		return nil, err
