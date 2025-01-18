@@ -39,7 +39,7 @@ func createUserWithXmrData(ctx context.Context, q *db.Queries) (pgtype.UUID, db.
 }
 
 func createNewTestXMRDaemon() daemon.IDaemonRpcClient {
-	u, err := url.Parse("http://node.monerodevs.org:38089")
+	u, err := url.Parse("http://stagenet.community.rino.io:38081")
 	if err != nil {
 		log.Fatal(err)
 	}

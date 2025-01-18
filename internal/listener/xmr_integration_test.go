@@ -11,7 +11,7 @@ import (
 )
 
 func getXMRDaemonRpcClient() daemon.IDaemonRpcClient {
-	uu, err := url.Parse("https://node.sethforprivacy.com")
+	uu, err := url.Parse("http://xmr-node.cakewallet.com:18081")
 	if err != nil {
 		log.Fatal(err)
 	}
