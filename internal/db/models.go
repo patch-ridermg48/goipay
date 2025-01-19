@@ -125,6 +125,7 @@ type CryptoDatum struct {
 	UserID pgtype.UUID
 	XmrID  pgtype.UUID
 	BtcID  pgtype.UUID
+	LtcID  pgtype.UUID
 }
 
 type Invoice struct {
@@ -140,6 +141,13 @@ type Invoice struct {
 	ExpiresAt             pgtype.Timestamptz
 	TxID                  pgtype.Text
 	UserID                pgtype.UUID
+}
+
+type LtcCryptoDatum struct {
+	ID             pgtype.UUID
+	MasterPubKey   string
+	LastMajorIndex int32
+	LastMinorIndex int32
 }
 
 type User struct {

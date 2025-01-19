@@ -22,6 +22,11 @@ const (
 	TestnetBTC
 	RegtestBTC
 	SignetBTC
+
+	MainnetLTC
+	TestnetLTC
+	RegtestLTC
+	SignetLTC
 )
 
 type transactionPoolSync struct {

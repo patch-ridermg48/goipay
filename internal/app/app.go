@@ -71,6 +71,9 @@ type AppConfig struct {
 		Btc struct {
 			Daemon AppConfigDaemon `yaml:"daemon"`
 		} `yaml:"btc"`
+		Ltc struct {
+			Daemon AppConfigDaemon `yaml:"daemon"`
+		} `yaml:"ltc"`
 	} `yaml:"coin"`
 }
 
@@ -106,6 +109,10 @@ func NewAppConfig(path string) (*AppConfig, error) {
 	conf.Coin.Btc.Daemon.Url = os.ExpandEnv(conf.Coin.Btc.Daemon.Url)
 	conf.Coin.Btc.Daemon.User = os.ExpandEnv(conf.Coin.Btc.Daemon.User)
 	conf.Coin.Btc.Daemon.Pass = os.ExpandEnv(conf.Coin.Btc.Daemon.Pass)
+
+	conf.Coin.Ltc.Daemon.Url = os.ExpandEnv(conf.Coin.Ltc.Daemon.Url)
+	conf.Coin.Ltc.Daemon.User = os.ExpandEnv(conf.Coin.Ltc.Daemon.User)
+	conf.Coin.Ltc.Daemon.Pass = os.ExpandEnv(conf.Coin.Ltc.Daemon.Pass)
 
 	return &conf, nil
 }
@@ -259,6 +266,7 @@ func appConfigToDaemonsConfig(c *AppConfig) *dto.DaemonsConfig {
 	return &dto.DaemonsConfig{
 		Xmr: dto.XMRDaemonConfig(*acdTodc(&c.Coin.Xmr.Daemon)),
 		Btc: dto.BTCDaemonConfig(*acdTodc(&c.Coin.Btc.Daemon)),
+		Ltc: dto.LTCDaemonConfig(*acdTodc(&c.Coin.Ltc.Daemon)),
 	}
 }
 

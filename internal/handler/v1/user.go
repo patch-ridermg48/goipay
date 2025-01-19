@@ -10,6 +10,7 @@ import (
 	"github.com/chekist32/goipay/internal/util"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	ltchdkeychain "github.com/ltcsuite/ltcd/ltcutil/hdkeychain"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -146,6 +147,40 @@ func (u *UserGrpc) handleBtcCryptoDataUpdate(ctx context.Context, q *db.Queries,
 	return nil
 }
 
+func (u *UserGrpc) handleLtcCryptoDataUpdate(ctx context.Context, q *db.Queries, in *pb_v1.LtcKeysUpdateRequest, cryptData *db.CryptoDatum) error {
+	_, err := ltchdkeychain.NewKeyFromString(in.MasterPubKey)
+	if err != nil {
+		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("An error occurred while creating the LTC master public key.")
+		return status.Error(codes.InvalidArgument, "Invalid LTC master public key.")
+	}
+
+	_, err = q.DeleteAllCryptoAddressByUserIdAndCoin(ctx, db.DeleteAllCryptoAddressByUserIdAndCoinParams{Coin: db.CoinTypeLTC, UserID: cryptData.UserID})
+	if err != nil {
+		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "DeleteAllCryptoAddressByUserIdAndCoin").Msg(util.DefaultFailedSqlQueryMsg)
+		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+	}
+
+	if !cryptData.LtcID.Valid {
+		ltcData, err := q.CreateLTCCryptoData(ctx, in.MasterPubKey)
+		if err != nil {
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "CreateLTCCryptoData").Msg(util.DefaultFailedSqlQueryMsg)
+			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+		}
+		_, err = q.SetLTCCryptoDataByUserId(ctx, db.SetLTCCryptoDataByUserIdParams{UserID: cryptData.UserID, LtcID: ltcData.ID})
+		if err != nil {
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "SetLTCCryptoDataByUserId").Msg(util.DefaultFailedSqlQueryMsg)
+			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+		}
+		return nil
+	}
+	_, err = q.UpdateKeysLTCCryptoDataById(ctx, db.UpdateKeysLTCCryptoDataByIdParams{ID: cryptData.LtcID, MasterPubKey: in.MasterPubKey})
+	if err != nil {
+		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+	}
+
+	return nil
+}
+
 func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoKeysRequest) (*pb_v1.UpdateCryptoKeysResponse, error) {
 	q, tx, err := util.InitDbQueriesWithTx(ctx, u.dbConnPool)
 	if err != nil {
@@ -178,6 +213,12 @@ func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoK
 	}
 	if in.BtcReq != nil {
 		if err := u.handleBtcCryptoDataUpdate(ctx, q, in.BtcReq, &cryptData); err != nil {
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("")
+			return nil, err
+		}
+	}
+	if in.LtcReq != nil {
+		if err := u.handleLtcCryptoDataUpdate(ctx, q, in.LtcReq, &cryptData); err != nil {
 			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("")
 			return nil, err
 		}

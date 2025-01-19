@@ -15,6 +15,7 @@ message UpdateCryptoKeysRequest {
     string userId = 1;
     optional crypto.v1.XmrKeysUpdateRequest xmrReq = 2;
     optional crypto.v1.BtcKeysUpdateRequest btcReq = 3;
+    optional crypto.v1.LtcKeysUpdateRequest ltcReq = 4;
 }
 message UpdateCryptoKeysResponse {}
 

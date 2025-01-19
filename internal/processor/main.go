@@ -49,7 +49,6 @@ func (p *PaymentProcessor) loadPersistedPendingInvoices() error {
 
 	tx.Commit(p.ctx)
 
-	// TODO: Add impelmentation for LTC
 	// TODO: Add impelmentation for ETH
 	// TODO: Add impelmentation for TON
 	for i := 0; i < len(invoices); i++ {
@@ -105,7 +104,6 @@ func (p *PaymentProcessor) load() error {
 func (p *PaymentProcessor) HandleNewInvoice(req *dto.NewInvoiceRequest) (*db.Invoice, error) {
 	// TODO: Add impelmentation for TON
 	// TODO: Add impelmentation for ETH
-	// TODO: Add impelmentation for LTC
 	if cp, ok := p.cryptoProcessors[req.Coin]; ok {
 		return cp.handleInvoicePbReq(p.ctx, req)
 	}
@@ -136,6 +134,13 @@ func NewPaymentProcessor(ctx context.Context, dbConnPool *pgxpool.Pool, c *dto.D
 			return nil, err
 		}
 		cryptoProcessors[btc.coin] = btc
+	}
+	if c.Ltc.Url != "" {
+		ltc, err := newLtcProcessor(log, dbConnPool, invoiceCn, c)
+		if err != nil {
+			return nil, err
+		}
+		cryptoProcessors[ltc.coin] = ltc
 	}
 
 	pp := &PaymentProcessor{

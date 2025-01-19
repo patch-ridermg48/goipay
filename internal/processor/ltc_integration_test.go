@@ -5,53 +5,69 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"net/url"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/chekist32/go-monero/daemon"
+	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/chekist32/goipay/internal/db"
 	"github.com/chekist32/goipay/internal/listener"
 	"github.com/chekist32/goipay/test"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
+	ltcrpc "github.com/ltcsuite/ltcd/rpcclient"
 	"github.com/stretchr/testify/assert"
-	"github.com/testcontainers/testcontainers-go"
 )
 
-func createUserWithXmrData(ctx context.Context, q *db.Queries) (pgtype.UUID, db.CryptoDatum, db.XmrCryptoDatum) {
+func createUserWithLtcData(ctx context.Context, q *db.Queries) (pgtype.UUID, db.CryptoDatum, db.LtcCryptoDatum) {
 	userId, err := q.CreateUser(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	xmrData, err := q.CreateXMRCryptoData(ctx, db.CreateXMRCryptoDataParams{PrivViewKey: "8aa763d1c8d9da4ca75cb6ca22a021b5cca376c1367be8d62bcc9cdf4b926009", PubSpendKey: "38e9908d33d034de0ba1281aa7afe3907b795cea14852b3d8fe276e8931cb130"})
+	ltcData, err := q.CreateLTCCryptoData(ctx, "zpub6o5L7tQbC4zavTL1Lzq1eg5qev4WQMXNWMGoruoHSX8YRss8V4U1k4UUae8abXpVxNh9eBHTLBGBjvuCSRtfVtAmf4LRBtsNxQX4gpj56Dc")
 	if err != nil {
 		log.Fatal(err)
 	}
-	cd, err := q.CreateCryptoData(ctx, db.CreateCryptoDataParams{XmrID: xmrData.ID, UserID: userId})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return userId, cd, xmrData
-}
-
-func createNewTestXMRDaemon() daemon.IDaemonRpcClient {
-	u, err := url.Parse("http://node.monerodevs.org:38089")
+	cd, err := q.CreateCryptoData(ctx, db.CreateCryptoDataParams{LtcID: ltcData.ID, UserID: userId})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return daemon.NewDaemonRpcClient(daemon.NewRpcConnection(u, "", ""))
+	return userId, cd, ltcData
 }
 
-func getPostgresWithDbConn() (*pgxpool.Pool, testcontainers.Container, func(ctx context.Context)) {
-	return test.SpinUpPostgresContainerAndGetPgxpool(fmt.Sprintf("%v/../../sql/migrations", os.Getenv("PWD")))
+func createNewTestLtcDaemon1() *rpcclient.Client {
+	connCfg := &rpcclient.ConnConfig{
+		Host:         "api.chainup.net/litecoin/mainnet/0b1abdf17ecc4b20b110ee73e17e7493",
+		User:         "user",
+		Pass:         "pass",
+		HTTPPostMode: true,
+		DisableTLS:   false,
+	}
+	client, err := rpcclient.New(connCfg, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return client
 }
 
-func TestGenerateNextXmrAddressHandler(t *testing.T) {
+func createNewTestLtcDaemon2() *ltcrpc.Client {
+	connCfg := &ltcrpc.ConnConfig{
+		Host:         "api.chainup.net/litecoin/mainnet/0b1abdf17ecc4b20b110ee73e17e7493",
+		User:         "user",
+		Pass:         "pass",
+		HTTPPostMode: true,
+		DisableTLS:   false,
+	}
+	client, err := ltcrpc.New(connCfg, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return client
+}
+
+func TestGenerateNextLtcAddressHandler(t *testing.T) {
 	t.Parallel()
 
 	data := []struct {
@@ -62,22 +78,22 @@ func TestGenerateNextXmrAddressHandler(t *testing.T) {
 		{
 			prevMajorIndex: 0,
 			prevMinorIndex: 0,
-			expectedAddr:   "74xhb5sXRsnDZv8RKFEv7LAMfUq5AmGEEB77SVvsUJf8bLvFMSEfc8YYyJHF6xNNnjAZQmgqZp76AjT8bD6qKkLZLeR42oi",
+			expectedAddr:   "ltc1quc3y9flfnhd9zeg5dm5h4ckzz040ykk495rstl",
 		},
 		{
 			prevMajorIndex: 0,
 			prevMinorIndex: 124,
-			expectedAddr:   "72KK86oj9H4AMSwaeisZLjA5FLEucwSXaQs7ncvkwRLV3wNCoLa81cQWo2tSwHp68hhLP2oPSipLGNtCPx1ojdqA4HyKgbC",
+			expectedAddr:   "ltc1qu0a864puuay8hsz9sg5sjl92d5qsxlp9w6740v",
 		},
 		{
 			prevMajorIndex: 0,
 			prevMinorIndex: math.MaxInt32,
-			expectedAddr:   "72c2F4L6XMu28Wf4e5yiVfKJcb4uDzvM9DxSAydF9o766RUiVqXawkhUcz7y59EBRrDafZB8DezLbLSrtb5xPL7s6PZ2zoj",
+			expectedAddr:   "ltc1quhh8zju3ah6hcjq624nvudfd0sevn9g3u80y2r",
 		},
 		{
 			prevMajorIndex: 1,
 			prevMinorIndex: 2,
-			expectedAddr:   "77QbnheAWq19ZU5fYV3ERJF1zCtd1wbV2W5DUJnaXt91cxTwZosvfqBi4Uknd53EABG9TYhWPZqxhN5HoBbamZjBC2EpWrb",
+			expectedAddr:   "ltc1qqnla6k30dly8vj370jqmx0ytynwrc92uxvxd45",
 		},
 	}
 
@@ -91,15 +107,15 @@ func TestGenerateNextXmrAddressHandler(t *testing.T) {
 			test.RunInTransaction(t, dbConn, func(t *testing.T, tx pgx.Tx) {
 				// Given
 				q := db.New(dbConn).WithTx(tx)
-				userId, cd, _ := createUserWithXmrData(ctx, q)
+				userId, cd, _ := createUserWithLtcData(ctx, q)
 
-				_, err := q.UpdateIndicesXMRCryptoDataById(ctx, db.UpdateIndicesXMRCryptoDataByIdParams{ID: cd.XmrID, LastMajorIndex: d.prevMajorIndex, LastMinorIndex: d.prevMinorIndex})
+				_, err := q.UpdateIndicesLTCCryptoDataById(ctx, db.UpdateIndicesLTCCryptoDataByIdParams{ID: cd.LtcID, LastMajorIndex: d.prevMajorIndex, LastMinorIndex: d.prevMinorIndex})
 				if err != nil {
 					log.Fatal(err)
 				}
 
 				// When
-				addr, err := generateNextXMRAddressHandler(ctx, q, &generateNextAddressHandlerData{userId: userId, network: listener.StagenetXMR})
+				addr, err := generateNextLTCAddressHandler(ctx, q, &generateNextAddressHandlerData{userId: userId, network: listener.MainnetLTC})
 
 				// Assert
 				assert.NoError(t, err)
@@ -110,7 +126,7 @@ func TestGenerateNextXmrAddressHandler(t *testing.T) {
 
 }
 
-func TestVerifyXMRTxHandler(t *testing.T) {
+func TestVerifyLTCTxHandler(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -118,7 +134,7 @@ func TestVerifyXMRTxHandler(t *testing.T) {
 	dbConn, _, close := getPostgresWithDbConn()
 	defer close(ctx)
 
-	daemon := listener.NewSharedXMRDaemonRpcClient(createNewTestXMRDaemon())
+	daemon := listener.NewSharedLTCDaemonRpcClient(createNewTestLtcDaemon1(), createNewTestLtcDaemon2())
 
 	t.Run("Should Return Right Amount (Valid Tx)", func(t *testing.T) {
 		test.RunInTransaction(t, dbConn, func(t *testing.T, tx pgx.Tx) {
@@ -126,12 +142,12 @@ func TestVerifyXMRTxHandler(t *testing.T) {
 			q := db.New(dbConn).WithTx(tx)
 			userId, _, _ := createUserWithXmrData(ctx, q)
 
-			expectedTxId := "eae833d591cf3333c1002c10ac4e8e74e65328a93933b404d6e40437911bf1cc"
+			expectedTxId := "4c699b97e516791e9189211af52f0f18fb24d71e86fb73530dfc9fc1fb00fc33"
 			expectedInvoice, err := q.CreateInvoice(ctx, db.CreateInvoiceParams{
 				UserID:                userId,
-				Coin:                  db.CoinTypeXMR,
-				CryptoAddress:         "74xhb5sXRsnDZv8RKFEv7LAMfUq5AmGEEB77SVvsUJf8bLvFMSEfc8YYyJHF6xNNnjAZQmgqZp76AjT8bD6qKkLZLeR42oi",
-				RequiredAmount:        0.00101,
+				Coin:                  db.CoinTypeLTC,
+				CryptoAddress:         "ltc1qa9fetyxs65t03w32vfyen4w2nph9uq9wr7pmg4",
+				RequiredAmount:        3.05398200,
 				ExpiresAt:             pgtype.Timestamptz{Time: time.Now().Add(time.Minute), Valid: true},
 				ConfirmationsRequired: 0,
 			})
@@ -147,7 +163,7 @@ func TestVerifyXMRTxHandler(t *testing.T) {
 			}
 
 			// When
-			amount, err := verifyXMRTxHandler(ctx, q, &verifyTxHandlerData[listener.XMRTx]{invoice: expectedInvoice, tx: txs[0]})
+			amount, err := verifyLTCTxHandler(ctx, q, &verifyTxHandlerData[listener.LTCTx]{invoice: expectedInvoice, tx: txs[0]})
 
 			// Assert
 			assert.NoError(t, err)
@@ -159,14 +175,14 @@ func TestVerifyXMRTxHandler(t *testing.T) {
 		test.RunInTransaction(t, dbConn, func(t *testing.T, tx pgx.Tx) {
 			// Given
 			q := db.New(dbConn).WithTx(tx)
-			userId, _, _ := createUserWithXmrData(ctx, q)
+			userId, _, _ := createUserWithLtcData(ctx, q)
 
-			expectedTxId := "7c9b8bc6278b0a5b957b1cf099f92a471be55ce1e9a8b25e3b364eb4f90f9b6f"
+			expectedTxId := "16132b08000b8af8e4ff5e63d1b10d2cf730ace428c778b4da44080b4ccc58a8"
 			expectedInvoice, err := q.CreateInvoice(ctx, db.CreateInvoiceParams{
 				UserID:                userId,
-				Coin:                  db.CoinTypeXMR,
-				CryptoAddress:         "74xhb5sXRsnDZv8RKFEv7LAMfUq5AmGEEB77SVvsUJf8bLvFMSEfc8YYyJHF6xNNnjAZQmgqZp76AjT8bD6qKkLZLeR42oi",
-				RequiredAmount:        0.00101,
+				Coin:                  db.CoinTypeLTC,
+				CryptoAddress:         "ltc1qa9fetyxs65t03w32vfyen4w2nph9uq9wr7pmg4",
+				RequiredAmount:        3.05398200,
 				ExpiresAt:             pgtype.Timestamptz{Time: time.Now().Add(time.Minute), Valid: true},
 				ConfirmationsRequired: 0,
 			})
@@ -182,7 +198,7 @@ func TestVerifyXMRTxHandler(t *testing.T) {
 			}
 
 			// When
-			amount, err := verifyXMRTxHandler(ctx, q, &verifyTxHandlerData[listener.XMRTx]{invoice: expectedInvoice, tx: txs[0]})
+			amount, err := verifyLTCTxHandler(ctx, q, &verifyTxHandlerData[listener.LTCTx]{invoice: expectedInvoice, tx: txs[0]})
 
 			// Assert
 			assert.NoError(t, err)

@@ -136,6 +136,6 @@ type BTCDaemonRpcClientExecutor struct {
 
 func NewBTCDaemonRpcClientExecutor(log *zerolog.Logger, client *rpcclient.Client) *BTCDaemonRpcClientExecutor {
 	return &BTCDaemonRpcClientExecutor{
-		BaseDaemonRpcClientExecutor: *NewBaseDaemonRpcClientExecutor(log, &SharedBTCDaemonRpcClient{client: client}),
+		BaseDaemonRpcClientExecutor: *NewBaseDaemonRpcClientExecutor(log, NewSharedBTCDaemonRpcClient(client)),
 	}
 }
