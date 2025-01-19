@@ -49,6 +49,10 @@ A lightweight crypto payment processor microservice, written in Golang, designed
   BTC_DAEMON_URL=http://localhost:38332
   BTC_DAEMON_USER=user
   BTC_DAEMON_PASS=pass
+  
+  LTC_DAEMON_URL=http://localhost:18444
+  LTC_DAEMON_USER=user
+  LTC_DAEMON_PASS=pass
   ```
 - Inside the root dir you can find an example ```docker-compose.yml``` file. For testing purposes can be run without editing.
   ```sh
@@ -63,20 +67,20 @@ A lightweight crypto payment processor microservice, written in Golang, designed
   ```sh
   cd goipay && make build
   ```
-Under the `bin` folder you will find `server` binary
-```sh
-./bin/server -h
-
-Usage of ./bin/server:
-  -client-ca string
-        Comma-separated list of paths to client certificate authority files (for mTLS)
-  -config string
-        Path to the config file (default "config.yml")
-  -log-level string
-        Defines the logging level
-  -reflection
-        Enables gRPC server reflection
-```
+- Under the `bin` folder you will find `server` binary
+  ```sh
+  ./bin/server -h
+  
+  Usage of ./bin/server:
+    -client-ca string
+          Comma-separated list of paths to client certificate authority files (for mTLS)
+    -config string
+          Path to the config file (default "config.yml")
+    -log-level string
+          Defines the logging level
+    -reflection
+          Enables gRPC server reflection
+  ```
   
 ## Usage
 
