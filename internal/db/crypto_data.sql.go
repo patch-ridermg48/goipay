@@ -30,20 +30,49 @@ func (q *Queries) CreateBTCCryptoData(ctx context.Context, masterPubKey string) 
 }
 
 const createCryptoData = `-- name: CreateCryptoData :one
-INSERT INTO crypto_data(xmr_id, btc_id, user_id) VALUES ($1, $2, $3)
-RETURNING user_id, xmr_id, btc_id
+INSERT INTO crypto_data(xmr_id, btc_id, ltc_id, user_id) VALUES ($1, $2, $3, $4)
+RETURNING user_id, xmr_id, btc_id, ltc_id
 `
 
 type CreateCryptoDataParams struct {
 	XmrID  pgtype.UUID
 	BtcID  pgtype.UUID
+	LtcID  pgtype.UUID
 	UserID pgtype.UUID
 }
 
 func (q *Queries) CreateCryptoData(ctx context.Context, arg CreateCryptoDataParams) (CryptoDatum, error) {
-	row := q.db.QueryRow(ctx, createCryptoData, arg.XmrID, arg.BtcID, arg.UserID)
+	row := q.db.QueryRow(ctx, createCryptoData,
+		arg.XmrID,
+		arg.BtcID,
+		arg.LtcID,
+		arg.UserID,
+	)
 	var i CryptoDatum
-	err := row.Scan(&i.UserID, &i.XmrID, &i.BtcID)
+	err := row.Scan(
+		&i.UserID,
+		&i.XmrID,
+		&i.BtcID,
+		&i.LtcID,
+	)
+	return i, err
+}
+
+const createLTCCryptoData = `-- name: CreateLTCCryptoData :one
+INSERT INTO ltc_crypto_data(master_pub_key) VALUES ($1)
+RETURNING id, master_pub_key, last_major_index, last_minor_index
+`
+
+// LTC
+func (q *Queries) CreateLTCCryptoData(ctx context.Context, masterPubKey string) (LtcCryptoDatum, error) {
+	row := q.db.QueryRow(ctx, createLTCCryptoData, masterPubKey)
+	var i LtcCryptoDatum
+	err := row.Scan(
+		&i.ID,
+		&i.MasterPubKey,
+		&i.LastMajorIndex,
+		&i.LastMinorIndex,
+	)
 	return i, err
 }
 
@@ -72,14 +101,19 @@ func (q *Queries) CreateXMRCryptoData(ctx context.Context, arg CreateXMRCryptoDa
 }
 
 const findCryptoDataByUserId = `-- name: FindCryptoDataByUserId :one
-SELECT user_id, xmr_id, btc_id FROM crypto_data 
+SELECT user_id, xmr_id, btc_id, ltc_id FROM crypto_data 
 WHERE user_id = $1
 `
 
 func (q *Queries) FindCryptoDataByUserId(ctx context.Context, userID pgtype.UUID) (CryptoDatum, error) {
 	row := q.db.QueryRow(ctx, findCryptoDataByUserId, userID)
 	var i CryptoDatum
-	err := row.Scan(&i.UserID, &i.XmrID, &i.BtcID)
+	err := row.Scan(
+		&i.UserID,
+		&i.XmrID,
+		&i.BtcID,
+		&i.LtcID,
+	)
 	return i, err
 }
 
@@ -98,6 +132,25 @@ type FindIndicesAndLockBTCCryptoDataByIdRow struct {
 func (q *Queries) FindIndicesAndLockBTCCryptoDataById(ctx context.Context, id pgtype.UUID) (FindIndicesAndLockBTCCryptoDataByIdRow, error) {
 	row := q.db.QueryRow(ctx, findIndicesAndLockBTCCryptoDataById, id)
 	var i FindIndicesAndLockBTCCryptoDataByIdRow
+	err := row.Scan(&i.LastMajorIndex, &i.LastMinorIndex)
+	return i, err
+}
+
+const findIndicesAndLockLTCCryptoDataById = `-- name: FindIndicesAndLockLTCCryptoDataById :one
+SELECT last_major_index, last_minor_index 
+FROM ltc_crypto_data
+WHERE id = $1
+FOR UPDATE
+`
+
+type FindIndicesAndLockLTCCryptoDataByIdRow struct {
+	LastMajorIndex int32
+	LastMinorIndex int32
+}
+
+func (q *Queries) FindIndicesAndLockLTCCryptoDataById(ctx context.Context, id pgtype.UUID) (FindIndicesAndLockLTCCryptoDataByIdRow, error) {
+	row := q.db.QueryRow(ctx, findIndicesAndLockLTCCryptoDataById, id)
+	var i FindIndicesAndLockLTCCryptoDataByIdRow
 	err := row.Scan(&i.LastMajorIndex, &i.LastMinorIndex)
 	return i, err
 }
@@ -135,6 +188,20 @@ func (q *Queries) FindKeysAndLockBTCCryptoDataById(ctx context.Context, id pgtyp
 	return master_pub_key, err
 }
 
+const findKeysAndLockLTCCryptoDataById = `-- name: FindKeysAndLockLTCCryptoDataById :one
+SELECT master_pub_key
+FROM ltc_crypto_data
+WHERE id = $1
+FOR SHARE
+`
+
+func (q *Queries) FindKeysAndLockLTCCryptoDataById(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, findKeysAndLockLTCCryptoDataById, id)
+	var master_pub_key string
+	err := row.Scan(&master_pub_key)
+	return master_pub_key, err
+}
+
 const findKeysAndLockXMRCryptoDataById = `-- name: FindKeysAndLockXMRCryptoDataById :one
 SELECT priv_view_key, pub_spend_key
 FROM xmr_crypto_data
@@ -158,7 +225,7 @@ const setBTCCryptoDataByUserId = `-- name: SetBTCCryptoDataByUserId :one
 UPDATE crypto_data
 SET btc_id = $2
 WHERE user_id = $1
-RETURNING user_id, xmr_id, btc_id
+RETURNING user_id, xmr_id, btc_id, ltc_id
 `
 
 type SetBTCCryptoDataByUserIdParams struct {
@@ -169,7 +236,36 @@ type SetBTCCryptoDataByUserIdParams struct {
 func (q *Queries) SetBTCCryptoDataByUserId(ctx context.Context, arg SetBTCCryptoDataByUserIdParams) (CryptoDatum, error) {
 	row := q.db.QueryRow(ctx, setBTCCryptoDataByUserId, arg.UserID, arg.BtcID)
 	var i CryptoDatum
-	err := row.Scan(&i.UserID, &i.XmrID, &i.BtcID)
+	err := row.Scan(
+		&i.UserID,
+		&i.XmrID,
+		&i.BtcID,
+		&i.LtcID,
+	)
+	return i, err
+}
+
+const setLTCCryptoDataByUserId = `-- name: SetLTCCryptoDataByUserId :one
+UPDATE crypto_data
+SET ltc_id = $2
+WHERE user_id = $1
+RETURNING user_id, xmr_id, btc_id, ltc_id
+`
+
+type SetLTCCryptoDataByUserIdParams struct {
+	UserID pgtype.UUID
+	LtcID  pgtype.UUID
+}
+
+func (q *Queries) SetLTCCryptoDataByUserId(ctx context.Context, arg SetLTCCryptoDataByUserIdParams) (CryptoDatum, error) {
+	row := q.db.QueryRow(ctx, setLTCCryptoDataByUserId, arg.UserID, arg.LtcID)
+	var i CryptoDatum
+	err := row.Scan(
+		&i.UserID,
+		&i.XmrID,
+		&i.BtcID,
+		&i.LtcID,
+	)
 	return i, err
 }
 
@@ -177,7 +273,7 @@ const setXMRCryptoDataByUserId = `-- name: SetXMRCryptoDataByUserId :one
 UPDATE crypto_data
 SET xmr_id = $2 
 WHERE user_id = $1
-RETURNING user_id, xmr_id, btc_id
+RETURNING user_id, xmr_id, btc_id, ltc_id
 `
 
 type SetXMRCryptoDataByUserIdParams struct {
@@ -188,7 +284,12 @@ type SetXMRCryptoDataByUserIdParams struct {
 func (q *Queries) SetXMRCryptoDataByUserId(ctx context.Context, arg SetXMRCryptoDataByUserIdParams) (CryptoDatum, error) {
 	row := q.db.QueryRow(ctx, setXMRCryptoDataByUserId, arg.UserID, arg.XmrID)
 	var i CryptoDatum
-	err := row.Scan(&i.UserID, &i.XmrID, &i.BtcID)
+	err := row.Scan(
+		&i.UserID,
+		&i.XmrID,
+		&i.BtcID,
+		&i.LtcID,
+	)
 	return i, err
 }
 
@@ -209,6 +310,32 @@ type UpdateIndicesBTCCryptoDataByIdParams struct {
 func (q *Queries) UpdateIndicesBTCCryptoDataById(ctx context.Context, arg UpdateIndicesBTCCryptoDataByIdParams) (BtcCryptoDatum, error) {
 	row := q.db.QueryRow(ctx, updateIndicesBTCCryptoDataById, arg.ID, arg.LastMajorIndex, arg.LastMinorIndex)
 	var i BtcCryptoDatum
+	err := row.Scan(
+		&i.ID,
+		&i.MasterPubKey,
+		&i.LastMajorIndex,
+		&i.LastMinorIndex,
+	)
+	return i, err
+}
+
+const updateIndicesLTCCryptoDataById = `-- name: UpdateIndicesLTCCryptoDataById :one
+UPDATE ltc_crypto_data
+SET last_major_index = $2,
+    last_minor_index = $3
+WHERE id = $1
+RETURNING id, master_pub_key, last_major_index, last_minor_index
+`
+
+type UpdateIndicesLTCCryptoDataByIdParams struct {
+	ID             pgtype.UUID
+	LastMajorIndex int32
+	LastMinorIndex int32
+}
+
+func (q *Queries) UpdateIndicesLTCCryptoDataById(ctx context.Context, arg UpdateIndicesLTCCryptoDataByIdParams) (LtcCryptoDatum, error) {
+	row := q.db.QueryRow(ctx, updateIndicesLTCCryptoDataById, arg.ID, arg.LastMajorIndex, arg.LastMinorIndex)
+	var i LtcCryptoDatum
 	err := row.Scan(
 		&i.ID,
 		&i.MasterPubKey,
@@ -262,6 +389,32 @@ type UpdateKeysBTCCryptoDataByIdParams struct {
 func (q *Queries) UpdateKeysBTCCryptoDataById(ctx context.Context, arg UpdateKeysBTCCryptoDataByIdParams) (BtcCryptoDatum, error) {
 	row := q.db.QueryRow(ctx, updateKeysBTCCryptoDataById, arg.ID, arg.MasterPubKey)
 	var i BtcCryptoDatum
+	err := row.Scan(
+		&i.ID,
+		&i.MasterPubKey,
+		&i.LastMajorIndex,
+		&i.LastMinorIndex,
+	)
+	return i, err
+}
+
+const updateKeysLTCCryptoDataById = `-- name: UpdateKeysLTCCryptoDataById :one
+UPDATE ltc_crypto_data
+SET master_pub_key = $2,
+    last_major_index = 0,
+    last_minor_index = 0
+WHERE id = $1
+RETURNING id, master_pub_key, last_major_index, last_minor_index
+`
+
+type UpdateKeysLTCCryptoDataByIdParams struct {
+	ID           pgtype.UUID
+	MasterPubKey string
+}
+
+func (q *Queries) UpdateKeysLTCCryptoDataById(ctx context.Context, arg UpdateKeysLTCCryptoDataByIdParams) (LtcCryptoDatum, error) {
+	row := q.db.QueryRow(ctx, updateKeysLTCCryptoDataById, arg.ID, arg.MasterPubKey)
+	var i LtcCryptoDatum
 	err := row.Scan(
 		&i.ID,
 		&i.MasterPubKey,
