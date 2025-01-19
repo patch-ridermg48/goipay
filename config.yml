@@ -25,3 +25,8 @@ coin:
       url: ${BTC_DAEMON_URL}
       user: ${BTC_DAEMON_USER}
       pass: ${BTC_DAEMON_PASS}
+  ltc:
+    daemon:
+      url: ${LTC_DAEMON_URL}
+      user: ${LTC_DAEMON_USER}
+      pass: ${LTC_DAEMON_PASS}
