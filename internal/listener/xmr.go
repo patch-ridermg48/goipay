@@ -98,7 +98,7 @@ type XMRDaemonRpcClientExecutor struct {
 
 func NewXMRDaemonRpcClientExecutor(log *zerolog.Logger, client daemon.IDaemonRpcClient) *XMRDaemonRpcClientExecutor {
 	return &XMRDaemonRpcClientExecutor{
-		BaseDaemonRpcClientExecutor: *NewBaseDaemonRpcClientExecutor(log, &SharedXMRDaemonRpcClient{client: client}),
+		BaseDaemonRpcClientExecutor: *NewBaseDaemonRpcClientExecutor(log, NewSharedXMRDaemonRpcClient(client)),
 	}
 }
 
