@@ -1,5 +1,5 @@
 -- name: CreateCryptoData :one
-INSERT INTO crypto_data(xmr_id, btc_id, ltc_id, user_id) VALUES ($1, $2, $3, $4)
+INSERT INTO crypto_data(xmr_id, btc_id, ltc_id, eth_id, user_id) VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: FindCryptoDataByUserId :one
@@ -21,6 +21,12 @@ RETURNING *;
 -- name: SetLTCCryptoDataByUserId :one
 UPDATE crypto_data
 SET ltc_id = $2
+WHERE user_id = $1
+RETURNING *;
+
+-- name: SetETHCryptoDataByUserId :one
+UPDATE crypto_data
+SET eth_id = $2
 WHERE user_id = $1
 RETURNING *;
 
@@ -117,6 +123,38 @@ FOR UPDATE;
 
 -- name: UpdateIndicesLTCCryptoDataById :one
 UPDATE ltc_crypto_data
+SET last_major_index = $2,
+    last_minor_index = $3
+WHERE id = $1
+RETURNING *;
+
+-- ETH
+-- name: CreateETHCryptoData :one
+INSERT INTO eth_crypto_data(master_pub_key) VALUES ($1)
+RETURNING *;
+
+-- name: FindKeysAndLockETHCryptoDataById :one
+SELECT master_pub_key
+FROM eth_crypto_data
+WHERE id = $1
+FOR SHARE;
+
+-- name: UpdateKeysETHCryptoDataById :one
+UPDATE eth_crypto_data
+SET master_pub_key = $2,
+    last_major_index = 0,
+    last_minor_index = 0
+WHERE id = $1
+RETURNING *;
+
+-- name: FindIndicesAndLockETHCryptoDataById :one
+SELECT last_major_index, last_minor_index 
+FROM eth_crypto_data
+WHERE id = $1
+FOR UPDATE;
+
+-- name: UpdateIndicesETHCryptoDataById :one
+UPDATE eth_crypto_data
 SET last_major_index = $2,
     last_minor_index = $3
 WHERE id = $1

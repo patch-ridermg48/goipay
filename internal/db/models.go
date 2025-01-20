@@ -14,11 +14,24 @@ import (
 type CoinType string
 
 const (
-	CoinTypeXMR CoinType = "XMR"
-	CoinTypeBTC CoinType = "BTC"
-	CoinTypeLTC CoinType = "LTC"
-	CoinTypeETH CoinType = "ETH"
-	CoinTypeTON CoinType = "TON"
+	CoinTypeXMR        CoinType = "XMR"
+	CoinTypeBTC        CoinType = "BTC"
+	CoinTypeLTC        CoinType = "LTC"
+	CoinTypeETH        CoinType = "ETH"
+	CoinTypeTON        CoinType = "TON"
+	CoinTypeUSDTERC20  CoinType = "USDT_ERC20"
+	CoinTypeUSDCERC20  CoinType = "USDC_ERC20"
+	CoinTypeDAIERC20   CoinType = "DAI_ERC20"
+	CoinTypeWBTCERC20  CoinType = "WBTC_ERC20"
+	CoinTypeUNIERC20   CoinType = "UNI_ERC20"
+	CoinTypeLINKERC20  CoinType = "LINK_ERC20"
+	CoinTypeAAVEERC20  CoinType = "AAVE_ERC20"
+	CoinTypeCRVERC20   CoinType = "CRV_ERC20"
+	CoinTypeMATICERC20 CoinType = "MATIC_ERC20"
+	CoinTypeSHIBERC20  CoinType = "SHIB_ERC20"
+	CoinTypeBNBERC20   CoinType = "BNB_ERC20"
+	CoinTypeATOMERC20  CoinType = "ATOM_ERC20"
+	CoinTypeARBERC20   CoinType = "ARB_ERC20"
 )
 
 func (e *CoinType) Scan(src interface{}) error {
@@ -126,6 +139,14 @@ type CryptoDatum struct {
 	XmrID  pgtype.UUID
 	BtcID  pgtype.UUID
 	LtcID  pgtype.UUID
+	EthID  pgtype.UUID
+}
+
+type EthCryptoDatum struct {
+	ID             pgtype.UUID
+	MasterPubKey   string
+	LastMajorIndex int32
+	LastMinorIndex int32
 }
 
 type Invoice struct {
