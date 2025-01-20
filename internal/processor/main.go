@@ -56,8 +56,10 @@ func (p *PaymentProcessor) loadPersistedPendingInvoices() error {
 
 	// TODO: Add impelmentation for TON
 	for i := 0; i < len(invoices); i++ {
-		if cp, ok := p.cryptoProcessors[invoices[i].Coin]; ok {
-			cp.handleInvoice(p.ctx, invoices[i])
+		for _, cp := range p.cryptoProcessors {
+			if cp.supportsCoin(invoices[i].Coin) {
+				cp.handleInvoice(p.ctx, invoices[i])
+			}
 		}
 	}
 
@@ -107,8 +109,10 @@ func (p *PaymentProcessor) load() error {
 
 func (p *PaymentProcessor) HandleNewInvoice(req *dto.NewInvoiceRequest) (*db.Invoice, error) {
 	// TODO: Add impelmentation for TON
-	if cp, ok := p.cryptoProcessors[req.Coin]; ok {
-		return cp.handleInvoicePbReq(p.ctx, req)
+	for _, cp := range p.cryptoProcessors {
+		if cp.supportsCoin(req.Coin) {
+			return cp.handleInvoicePbReq(p.ctx, req)
+		}
 	}
 
 	return nil, unimplementedError

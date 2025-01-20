@@ -8,6 +8,7 @@ import (
 	"github.com/chekist32/goipay/internal/db"
 	"github.com/chekist32/goipay/internal/dto"
 	"github.com/chekist32/goipay/internal/listener"
+	"github.com/chekist32/goipay/internal/util"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -153,6 +154,7 @@ func newEthProcessor(log *zerolog.Logger, dbConnPool *pgxpool.Pool, invoiceCn ch
 		listener.NewSharedETHDaemonRpcClient(client),
 		verifyETHTxHandler,
 		generateNextETHAddressHandler,
+		util.GetMapKeys(tokenData),
 	)
 	if err != nil {
 		return nil, err
