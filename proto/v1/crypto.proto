@@ -22,3 +22,7 @@ message BtcKeysUpdateRequest {
 message LtcKeysUpdateRequest {
     string masterPubKey = 1;
 }
+
+message EthKeysUpdateRequest {
+    string masterPubKey = 1;
+}
