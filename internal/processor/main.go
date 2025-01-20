@@ -39,11 +39,16 @@ func (p *PaymentProcessor) loadPersistedPendingInvoices() error {
 		p.log.Err(err).Msg(util.DefaultFailedSqlTxInitMsg)
 		return err
 	}
+	defer tx.Rollback(p.ctx)
 
-	invoices, err := q.ShiftExpiresAtForNonConfirmedInvoices(p.ctx)
-	if err != nil {
-		tx.Rollback(p.ctx)
+	if _, err := q.ShiftExpiresAtForNonConfirmedInvoices(p.ctx); err != nil {
 		p.log.Err(err).Str("queryName", "ShiftExpiresAtForNonConfirmedInvoices").Msg(util.DefaultFailedSqlQueryMsg)
+		return err
+	}
+
+	invoices, err := q.FindAllPendingInvoices(p.ctx)
+	if err != nil {
+		p.log.Err(err).Str("queryName", "FindAllPendingInvoices").Msg(util.DefaultFailedSqlQueryMsg)
 		return err
 	}
 
