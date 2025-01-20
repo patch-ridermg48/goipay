@@ -27,6 +27,11 @@ const (
 	TestnetLTC
 	RegtestLTC
 	SignetLTC
+
+	MainnetETH
+	GoerliETH
+	SepoliaETH
+	PrivateETH
 )
 
 type transactionPoolSync struct {
