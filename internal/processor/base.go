@@ -39,6 +39,7 @@ type cryptoProcessor interface {
 	load(ctx context.Context) error
 	handleInvoicePbReq(ctx context.Context, req *dto.NewInvoiceRequest) (*db.Invoice, error)
 	handleInvoice(ctx context.Context, invoice db.Invoice)
+	supportsCoin(coin db.CoinType) bool
 }
 
 type baseCryptoProcessor[T listener.SharedTx, B listener.SharedBlock] struct {
@@ -49,7 +50,9 @@ type baseCryptoProcessor[T listener.SharedTx, B listener.SharedBlock] struct {
 	daemon   listener.SharedDaemonRpcClient[T, B]
 	daemonEx listener.DaemonRpcClientExecutor[T, B]
 	network  listener.NetworkType
-	coin     db.CoinType
+
+	coin            db.CoinType
+	supportedTokens map[db.CoinType]bool
 
 	invoiceCn       chan<- db.Invoice
 	pendingInvoices *util.SyncMapTypeSafe[string, pendingInvoice]
@@ -331,7 +334,7 @@ func (b *baseCryptoProcessor[T, B]) createInvoice(ctx context.Context, req *dto.
 }
 
 func (b *baseCryptoProcessor[T, B]) handleInvoicePbReq(ctx context.Context, req *dto.NewInvoiceRequest) (*db.Invoice, error) {
-	if b.coin != req.Coin {
+	if !b.supportsCoin(req.Coin) {
 		return nil, unsupportedCoin
 	}
 
@@ -425,6 +428,10 @@ func (b *baseCryptoProcessor[T, B]) handleInvoice(ctx context.Context, invoice d
 	go b.handleInvoiceHelper(confirmedInvoiceCtx, &invoice)
 }
 
+func (b *baseCryptoProcessor[T, B]) supportsCoin(coin db.CoinType) bool {
+	return b.coin == coin || b.supportedTokens[coin]
+}
+
 func newBaseCryptoProcessor[T listener.SharedTx, B listener.SharedBlock](
 	log *zerolog.Logger,
 	dbConnPool *pgxpool.Pool,
@@ -432,6 +439,7 @@ func newBaseCryptoProcessor[T listener.SharedTx, B listener.SharedBlock](
 	daemon listener.SharedDaemonRpcClient[T, B],
 	verifyTxHandler func(ctx context.Context, q *db.Queries, data *verifyTxHandlerData[T]) (float64, error),
 	generateNextAddressHandler func(ctx context.Context, q *db.Queries, data *generateNextAddressHandlerData) (db.CryptoAddress, error),
+	supportedTokens []db.CoinType,
 ) (*baseCryptoProcessor[T, B], error) {
 	net, err := daemon.GetNetworkType()
 	if err != nil {
@@ -446,6 +454,7 @@ func newBaseCryptoProcessor[T listener.SharedTx, B listener.SharedBlock](
 			daemon:                     daemon,
 			daemonEx:                   listener.NewBaseDaemonRpcClientExecutor(log, daemon),
 			coin:                       daemon.GetCoinType(),
+			supportedTokens:            util.SliceToSet(supportedTokens),
 			pendingInvoices:            new(util.SyncMapTypeSafe[string, pendingInvoice]),
 			verifyTxHandler:            verifyTxHandler,
 			generateNextAddressHandler: generateNextAddressHandler,

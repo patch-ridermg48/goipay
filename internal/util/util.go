@@ -38,3 +38,25 @@ func GetRequestIdOrEmptyString(ctx context.Context) string {
 
 	return md.RequestId
 }
+
+func SliceToSet[T comparable](s []T) map[T]bool {
+	size := len(s)
+
+	m := make(map[T]bool, size)
+	for i := 0; i < size; i++ {
+		m[s[i]] = true
+	}
+
+	return m
+}
+
+func GetMapKeys[K comparable, V any](m map[K]V) []K {
+	size := len(m)
+
+	s := make([]K, 0, size)
+	for k := range m {
+		s = append(s, k)
+	}
+
+	return s
+}
