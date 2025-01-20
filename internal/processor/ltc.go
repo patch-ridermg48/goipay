@@ -149,6 +149,7 @@ func newLtcProcessor(log *zerolog.Logger, dbConnPool *pgxpool.Pool, invoiceCn ch
 		listener.NewSharedLTCDaemonRpcClient(client, ltcClient),
 		verifyLTCTxHandler,
 		generateNextLTCAddressHandler,
+		nil,
 	)
 	if err != nil {
 		return nil, err

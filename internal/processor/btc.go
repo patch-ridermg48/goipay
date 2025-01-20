@@ -136,6 +136,7 @@ func newBtcProcessor(log *zerolog.Logger, dbConnPool *pgxpool.Pool, invoiceCn ch
 		listener.NewSharedBTCDaemonRpcClient(client),
 		verifyBTCTxHandler,
 		generateNextBTCAddressHandler,
+		nil,
 	)
 	if err != nil {
 		return nil, err

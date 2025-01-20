@@ -83,6 +83,7 @@ func createNewTestBaseCryptoProcessor[T listener.SharedTx, B listener.SharedBloc
 		daemon,
 		verifyTxHandler,
 		generateNextAddressHandler,
+		nil,
 	)
 	if err != nil {
 		log.Fatal(err)

@@ -147,6 +147,7 @@ func newXmrProcessor(log *zerolog.Logger, dbConnPool *pgxpool.Pool, invoiceCn ch
 		listener.NewSharedXMRDaemonRpcClient(daemon.NewDaemonRpcClient(daemon.NewRpcConnection(u, c.Xmr.User, c.Xmr.Pass))),
 		verifyXMRTxHandler,
 		generateNextXMRAddressHandler,
+		nil,
 	)
 	if err != nil {
 		return nil, err
