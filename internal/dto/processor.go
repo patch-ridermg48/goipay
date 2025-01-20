@@ -18,9 +18,11 @@ type DaemonConfig struct {
 type XMRDaemonConfig DaemonConfig
 type BTCDaemonConfig DaemonConfig
 type LTCDaemonConfig DaemonConfig
+type ETHDaemonConfig DaemonConfig
 
 type DaemonsConfig struct {
 	Xmr XMRDaemonConfig
 	Btc BTCDaemonConfig
 	Ltc LTCDaemonConfig
+	Eth ETHDaemonConfig
 }

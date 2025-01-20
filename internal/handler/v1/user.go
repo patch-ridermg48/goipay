@@ -181,6 +181,40 @@ func (u *UserGrpc) handleLtcCryptoDataUpdate(ctx context.Context, q *db.Queries,
 	return nil
 }
 
+func (u *UserGrpc) handleEthCryptoDataUpdate(ctx context.Context, q *db.Queries, in *pb_v1.EthKeysUpdateRequest, cryptData *db.CryptoDatum) error {
+	_, err := hdkeychain.NewKeyFromString(in.MasterPubKey)
+	if err != nil {
+		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("An error occurred while creating the ETH master public key.")
+		return status.Error(codes.InvalidArgument, "Invalid ETH master public key.")
+	}
+
+	_, err = q.DeleteAllCryptoAddressByUserIdAndCoin(ctx, db.DeleteAllCryptoAddressByUserIdAndCoinParams{Coin: db.CoinTypeETH, UserID: cryptData.UserID})
+	if err != nil {
+		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "DeleteAllCryptoAddressByUserIdAndCoin").Msg(util.DefaultFailedSqlQueryMsg)
+		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+	}
+
+	if !cryptData.EthID.Valid {
+		ethData, err := q.CreateETHCryptoData(ctx, in.MasterPubKey)
+		if err != nil {
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "CreateETHCryptoData").Msg(util.DefaultFailedSqlQueryMsg)
+			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+		}
+		_, err = q.SetETHCryptoDataByUserId(ctx, db.SetETHCryptoDataByUserIdParams{UserID: cryptData.UserID, EthID: ethData.ID})
+		if err != nil {
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "SetETHCryptoDataByUserId").Msg(util.DefaultFailedSqlQueryMsg)
+			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+		}
+		return nil
+	}
+	_, err = q.UpdateKeysETHCryptoDataById(ctx, db.UpdateKeysETHCryptoDataByIdParams{ID: cryptData.EthID, MasterPubKey: in.MasterPubKey})
+	if err != nil {
+		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
+	}
+
+	return nil
+}
+
 func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoKeysRequest) (*pb_v1.UpdateCryptoKeysResponse, error) {
 	q, tx, err := util.InitDbQueriesWithTx(ctx, u.dbConnPool)
 	if err != nil {
@@ -219,6 +253,12 @@ func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoK
 	}
 	if in.LtcReq != nil {
 		if err := u.handleLtcCryptoDataUpdate(ctx, q, in.LtcReq, &cryptData); err != nil {
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("")
+			return nil, err
+		}
+	}
+	if in.EthReq != nil {
+		if err := u.handleEthCryptoDataUpdate(ctx, q, in.EthReq, &cryptData); err != nil {
 			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("")
 			return nil, err
 		}
