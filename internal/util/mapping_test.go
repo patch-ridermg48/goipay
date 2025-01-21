@@ -18,8 +18,48 @@ import (
 )
 
 var (
-	pbCoins           []pb_v1.CoinType          = []pb_v1.CoinType{pb_v1.CoinType_XMR, pb_v1.CoinType_BTC, pb_v1.CoinType_LTC, pb_v1.CoinType_ETH, pb_v1.CoinType_TON}
-	dbCoins           []db.CoinType             = []db.CoinType{db.CoinTypeXMR, db.CoinTypeBTC, db.CoinTypeLTC, db.CoinTypeETH, db.CoinTypeTON}
+	pbCoins []pb_v1.CoinType = []pb_v1.CoinType{
+		pb_v1.CoinType_XMR,
+		pb_v1.CoinType_BTC,
+		pb_v1.CoinType_LTC,
+		pb_v1.CoinType_ETH,
+		pb_v1.CoinType_TON,
+		// ERC20
+		pb_v1.CoinType_USDT_ERC20,
+		pb_v1.CoinType_USDC_ERC20,
+		pb_v1.CoinType_DAI_ERC20,
+		pb_v1.CoinType_WBTC_ERC20,
+		pb_v1.CoinType_UNI_ERC20,
+		pb_v1.CoinType_LINK_ERC20,
+		pb_v1.CoinType_AAVE_ERC20,
+		pb_v1.CoinType_CRV_ERC20,
+		pb_v1.CoinType_MATIC_ERC20,
+		pb_v1.CoinType_SHIB_ERC20,
+		pb_v1.CoinType_BNB_ERC20,
+		pb_v1.CoinType_ATOM_ERC20,
+		pb_v1.CoinType_ARB_ERC20,
+	}
+	dbCoins []db.CoinType = []db.CoinType{
+		db.CoinTypeXMR,
+		db.CoinTypeBTC,
+		db.CoinTypeLTC,
+		db.CoinTypeETH,
+		db.CoinTypeTON,
+		// ERC20
+		db.CoinTypeUSDTERC20,
+		db.CoinTypeUSDCERC20,
+		db.CoinTypeDAIERC20,
+		db.CoinTypeWBTCERC20,
+		db.CoinTypeUNIERC20,
+		db.CoinTypeLINKERC20,
+		db.CoinTypeAAVEERC20,
+		db.CoinTypeCRVERC20,
+		db.CoinTypeMATICERC20,
+		db.CoinTypeSHIBERC20,
+		db.CoinTypeBNBERC20,
+		db.CoinTypeATOMERC20,
+		db.CoinTypeARBERC20,
+	}
 	dbInvoiceStatuses []db.InvoiceStatusType    = []db.InvoiceStatusType{db.InvoiceStatusTypePENDING, db.InvoiceStatusTypePENDINGMEMPOOL, db.InvoiceStatusTypeEXPIRED, db.InvoiceStatusTypeCONFIRMED}
 	pbInvoiceStatuses []pb_v1.InvoiceStatusType = []pb_v1.InvoiceStatusType{pb_v1.InvoiceStatusType_PENDING, pb_v1.InvoiceStatusType_PENDING_MEMPOOL, pb_v1.InvoiceStatusType_EXPIRED, pb_v1.InvoiceStatusType_CONFIRMED}
 )

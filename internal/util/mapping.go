@@ -40,6 +40,34 @@ func PbCoinToDbCoin(coin pb_v1.CoinType) (db.CoinType, error) {
 		return db.CoinTypeLTC, nil
 	case pb_v1.CoinType_TON:
 		return db.CoinTypeTON, nil
+
+	// ERC20
+	case pb_v1.CoinType_USDT_ERC20:
+		return db.CoinTypeUSDTERC20, nil
+	case pb_v1.CoinType_USDC_ERC20:
+		return db.CoinTypeUSDCERC20, nil
+	case pb_v1.CoinType_DAI_ERC20:
+		return db.CoinTypeDAIERC20, nil
+	case pb_v1.CoinType_WBTC_ERC20:
+		return db.CoinTypeWBTCERC20, nil
+	case pb_v1.CoinType_UNI_ERC20:
+		return db.CoinTypeUNIERC20, nil
+	case pb_v1.CoinType_LINK_ERC20:
+		return db.CoinTypeLINKERC20, nil
+	case pb_v1.CoinType_CRV_ERC20:
+		return db.CoinTypeCRVERC20, nil
+	case pb_v1.CoinType_MATIC_ERC20:
+		return db.CoinTypeMATICERC20, nil
+	case pb_v1.CoinType_SHIB_ERC20:
+		return db.CoinTypeSHIBERC20, nil
+	case pb_v1.CoinType_BNB_ERC20:
+		return db.CoinTypeBNBERC20, nil
+	case pb_v1.CoinType_ATOM_ERC20:
+		return db.CoinTypeATOMERC20, nil
+	case pb_v1.CoinType_ARB_ERC20:
+		return db.CoinTypeARBERC20, nil
+	case pb_v1.CoinType_AAVE_ERC20:
+		return db.CoinTypeAAVEERC20, nil
 	}
 
 	return "", invalidProtoBufCoinTypeErr
@@ -57,6 +85,34 @@ func DbCoinToPbCoin(coin db.CoinType) (pb_v1.CoinType, error) {
 		return pb_v1.CoinType_LTC, nil
 	case db.CoinTypeTON:
 		return pb_v1.CoinType_TON, nil
+
+	// ERC20
+	case db.CoinTypeUSDTERC20:
+		return pb_v1.CoinType_USDT_ERC20, nil
+	case db.CoinTypeUSDCERC20:
+		return pb_v1.CoinType_USDC_ERC20, nil
+	case db.CoinTypeDAIERC20:
+		return pb_v1.CoinType_DAI_ERC20, nil
+	case db.CoinTypeWBTCERC20:
+		return pb_v1.CoinType_WBTC_ERC20, nil
+	case db.CoinTypeUNIERC20:
+		return pb_v1.CoinType_UNI_ERC20, nil
+	case db.CoinTypeLINKERC20:
+		return pb_v1.CoinType_LINK_ERC20, nil
+	case db.CoinTypeAAVEERC20:
+		return pb_v1.CoinType_AAVE_ERC20, nil
+	case db.CoinTypeCRVERC20:
+		return pb_v1.CoinType_CRV_ERC20, nil
+	case db.CoinTypeMATICERC20:
+		return pb_v1.CoinType_MATIC_ERC20, nil
+	case db.CoinTypeSHIBERC20:
+		return pb_v1.CoinType_SHIB_ERC20, nil
+	case db.CoinTypeBNBERC20:
+		return pb_v1.CoinType_BNB_ERC20, nil
+	case db.CoinTypeATOMERC20:
+		return pb_v1.CoinType_ATOM_ERC20, nil
+	case db.CoinTypeARBERC20:
+		return pb_v1.CoinType_ARB_ERC20, nil
 	}
 
 	return math.MaxInt32, invalidDbCoinTypeErr
