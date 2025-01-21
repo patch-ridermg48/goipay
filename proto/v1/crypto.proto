@@ -8,6 +8,21 @@ enum CoinType {
     LTC = 2;
     ETH = 3;
     TON = 4;
+    
+    // ERC20
+    USDT_ERC20 = 5;
+    USDC_ERC20 = 6;
+    DAI_ERC20 = 7;
+    WBTC_ERC20 = 8;
+    UNI_ERC20 = 9;
+    LINK_ERC20 = 10;
+    AAVE_ERC20 = 11;
+    CRV_ERC20 = 12;
+    MATIC_ERC20 = 13;
+    SHIB_ERC20 = 14;
+    BNB_ERC20 = 15;
+    ATOM_ERC20 = 16;
+    ARB_ERC20 = 17;
 }
 
 message XmrKeysUpdateRequest {
