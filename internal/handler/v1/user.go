@@ -41,6 +41,10 @@ func (u *UserGrpc) createUser(ctx context.Context, q *db.Queries, in *pb_v1.Regi
 		return nil, status.Error(codes.InvalidArgument, util.InvalidUserIdInvalidUUIDMsg)
 	}
 
+	if err := checkIfUserExistsUUID(ctx, u.log, q, *userIdReq); err == nil {
+		return nil, status.Error(codes.InvalidArgument, util.InvalidUserIdUserExistsMsg)
+	}
+
 	userId, err := q.CreateUserWithId(ctx, *userIdReq)
 	if err != nil {
 		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "CreateUserWithId").Msg(util.DefaultFailedSqlQueryMsg)
@@ -225,7 +229,7 @@ func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoK
 
 	userId, err := util.StringToPgUUID(in.UserId)
 	if err != nil {
-		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("An error occurred while converting the string to the PostgreSQL UUID data type.")
+		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg(util.FailedStringToPgUUIDMappingMsg)
 		return nil, status.Error(codes.InvalidArgument, util.InvalidUserIdInvalidUUIDMsg)
 	}
 
