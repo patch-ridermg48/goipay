@@ -16,7 +16,7 @@ services:
       - "54321:5432"
 
   migrations:
-    image: ghcr.io/kukymbr/goose-docker:3.21.1
+    image: ghcr.io/kukymbr/goose-docker:latest
     environment:
       - GOOSE_DRIVER=postgres
       - GOOSE_DBSTRING=host=db port=5432 user=postgres password=postgres dbname=goipay_db
