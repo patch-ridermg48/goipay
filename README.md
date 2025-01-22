@@ -58,6 +58,8 @@ A lightweight crypto payment processor microservice, written in Golang, designed
   LTC_DAEMON_URL=http://localhost:18444
   LTC_DAEMON_USER=user
   LTC_DAEMON_PASS=pass
+
+  ETH_DAEMON_URL=https://ethereum.publicnode.com
   ```
 - Inside the root dir you can find an example ```docker-compose.yml``` file. For testing purposes can be run without editing.
   ```sh
