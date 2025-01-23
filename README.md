@@ -8,9 +8,6 @@
 </div>
 
 ## Description
-> **Note:**
-> The project is in development. This is not a release version.  
-> As for now, only XMR invoices are implemented.
 
 A lightweight crypto payment processor microservice, written in Golang, designed for creating and processing cryptocurrency invoices via gRPC.
 ### Supported Crypto
