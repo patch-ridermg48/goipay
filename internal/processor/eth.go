@@ -79,7 +79,7 @@ func verifyETHTxHandler(ctx context.Context, q *db.Queries, data *verifyTxHandle
 				amount += am
 			}
 		}
-	} else if data.invoice.CryptoAddress == data.tx.Tx.To().Hex() {
+	} else if toAddr := data.tx.Tx.To(); toAddr != nil && data.invoice.CryptoAddress == toAddr.Hex() {
 		amount += float64(data.tx.Tx.Value().Uint64()) / 1e18
 	}
 
