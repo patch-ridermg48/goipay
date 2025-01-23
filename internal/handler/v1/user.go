@@ -2,6 +2,8 @@ package v1
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/chekist32/go-monero/utils"
@@ -10,7 +12,6 @@ import (
 	"github.com/chekist32/goipay/internal/util"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	ltchdkeychain "github.com/ltcsuite/ltcd/ltcutil/hdkeychain"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -39,6 +40,10 @@ func (u *UserGrpc) createUser(ctx context.Context, q *db.Queries, in *pb_v1.Regi
 	if err != nil {
 		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg(util.InvalidUserIdInvalidUUIDMsg)
 		return nil, status.Error(codes.InvalidArgument, util.InvalidUserIdInvalidUUIDMsg)
+	}
+
+	if err := checkIfUserExistsUUID(ctx, u.log, q, *userIdReq); err == nil {
+		return nil, status.Error(codes.InvalidArgument, util.InvalidUserIdUserExistsMsg)
 	}
 
 	userId, err := q.CreateUserWithId(ctx, *userIdReq)
@@ -75,19 +80,16 @@ func (u *UserGrpc) RegisterUser(ctx context.Context, in *pb_v1.RegisterUserReque
 }
 
 func (u *UserGrpc) handleXmrCryptoDataUpdate(ctx context.Context, q *db.Queries, in *pb_v1.XmrKeysUpdateRequest, cryptData *db.CryptoDatum) error {
-	_, err := utils.NewPrivateKey(in.PrivViewKey)
-	if err != nil {
+	if _, err := utils.NewPrivateKey(in.PrivViewKey); err != nil {
 		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("An error occurred while creating the XMR private view key.")
 		return status.Error(codes.InvalidArgument, "Invalid XMR private view key.")
 	}
-	_, err = utils.NewPublicKey(in.PubSpendKey)
-	if err != nil {
+	if _, err := utils.NewPublicKey(in.PubSpendKey); err != nil {
 		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("An error occurred while creating the XMR public spend key.")
 		return status.Error(codes.InvalidArgument, "Invalid XMR public spend key.")
 	}
 
-	_, err = q.DeleteAllCryptoAddressByUserIdAndCoin(ctx, db.DeleteAllCryptoAddressByUserIdAndCoinParams{Coin: db.CoinTypeXMR, UserID: cryptData.UserID})
-	if err != nil {
+	if _, err := q.DeleteAllCryptoAddressByUserIdAndCoin(ctx, db.DeleteAllCryptoAddressByUserIdAndCoinParams{Coin: db.CoinTypeXMR, UserID: cryptData.UserID}); err != nil {
 		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "DeleteAllCryptoAddressByUserIdAndCoin").Msg(util.DefaultFailedSqlQueryMsg)
 		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 	}
@@ -98,117 +100,107 @@ func (u *UserGrpc) handleXmrCryptoDataUpdate(ctx context.Context, q *db.Queries,
 			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "CreateXMRCryptoData").Msg(util.DefaultFailedSqlQueryMsg)
 			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 		}
-		_, err = q.SetXMRCryptoDataByUserId(ctx, db.SetXMRCryptoDataByUserIdParams{UserID: cryptData.UserID, XmrID: xmrData.ID})
-		if err != nil {
+
+		if _, err := q.SetXMRCryptoDataByUserId(ctx, db.SetXMRCryptoDataByUserIdParams{UserID: cryptData.UserID, XmrID: xmrData.ID}); err != nil {
 			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "SetXMRCryptoDataByUserId").Msg(util.DefaultFailedSqlQueryMsg)
 			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 		}
 		return nil
 	}
-	_, err = q.UpdateKeysXMRCryptoDataById(ctx, db.UpdateKeysXMRCryptoDataByIdParams{ID: cryptData.XmrID, PrivViewKey: in.PrivViewKey, PubSpendKey: in.PubSpendKey})
-	if err != nil {
+
+	if _, err := q.UpdateKeysXMRCryptoDataById(ctx, db.UpdateKeysXMRCryptoDataByIdParams{ID: cryptData.XmrID, PrivViewKey: in.PrivViewKey, PubSpendKey: in.PubSpendKey}); err != nil {
 		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 	}
 
 	return nil
 }
 
-func (u *UserGrpc) handleBtcCryptoDataUpdate(ctx context.Context, q *db.Queries, in *pb_v1.BtcKeysUpdateRequest, cryptData *db.CryptoDatum) error {
-	_, err := hdkeychain.NewKeyFromString(in.MasterPubKey)
+func (u *UserGrpc) handleHDKeysCryptoDataUpdate(ctx context.Context, q *db.Queries, masterPubKey string, coin db.CoinType, cryptData *db.CryptoDatum) error {
+	cryptoId, createCryptoCryptoData, setCryptoCryptoDataByUserId, updateKeysCryptoCryptoDataById, err := func() (
+		pgtype.UUID,
+		func(masterPubKey string) (pgtype.UUID, error),
+		func(userId, cryptoId pgtype.UUID) error,
+		func(cryptoId pgtype.UUID, masterPubKey string) error,
+		error,
+	) {
+		switch coin {
+		case db.CoinTypeLTC:
+			return cryptData.LtcID,
+				func(masterPubKey string) (pgtype.UUID, error) {
+					data, err := q.CreateLTCCryptoData(ctx, masterPubKey)
+					return data.ID, err
+				},
+				func(userId, cryptoId pgtype.UUID) error {
+					_, err := q.SetLTCCryptoDataByUserId(ctx, db.SetLTCCryptoDataByUserIdParams{UserID: userId, LtcID: cryptoId})
+					return err
+				},
+				func(cryptoId pgtype.UUID, masterPubKey string) error {
+					_, err := q.UpdateKeysLTCCryptoDataById(ctx, db.UpdateKeysLTCCryptoDataByIdParams{ID: cryptoId, MasterPubKey: masterPubKey})
+					return err
+				},
+				nil
+		case db.CoinTypeBTC:
+			return cryptData.BtcID,
+				func(masterPubKey string) (pgtype.UUID, error) {
+					data, err := q.CreateBTCCryptoData(ctx, masterPubKey)
+					return data.ID, err
+				},
+				func(userId, cryptoId pgtype.UUID) error {
+					_, err := q.SetBTCCryptoDataByUserId(ctx, db.SetBTCCryptoDataByUserIdParams{UserID: userId, BtcID: cryptoId})
+					return err
+				},
+				func(cryptoId pgtype.UUID, masterPubKey string) error {
+					_, err := q.UpdateKeysBTCCryptoDataById(ctx, db.UpdateKeysBTCCryptoDataByIdParams{ID: cryptoId, MasterPubKey: masterPubKey})
+					return err
+				},
+				nil
+		case db.CoinTypeETH:
+			return cryptData.EthID,
+				func(masterPubKey string) (pgtype.UUID, error) {
+					data, err := q.CreateETHCryptoData(ctx, masterPubKey)
+					return data.ID, err
+				},
+				func(userId, cryptoId pgtype.UUID) error {
+					_, err := q.SetETHCryptoDataByUserId(ctx, db.SetETHCryptoDataByUserIdParams{UserID: userId, EthID: cryptoId})
+					return err
+				},
+				func(cryptoId pgtype.UUID, masterPubKey string) error {
+					_, err := q.UpdateKeysETHCryptoDataById(ctx, db.UpdateKeysETHCryptoDataByIdParams{ID: cryptoId, MasterPubKey: masterPubKey})
+					return err
+				},
+				nil
+		default:
+			return pgtype.UUID{}, nil, nil, nil, errors.New("unsupported coin type")
+		}
+	}()
 	if err != nil {
-		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("An error occurred while creating the BTC master public key.")
-		return status.Error(codes.InvalidArgument, "Invalid BTC master public key.")
+		return err
 	}
 
-	_, err = q.DeleteAllCryptoAddressByUserIdAndCoin(ctx, db.DeleteAllCryptoAddressByUserIdAndCoinParams{Coin: db.CoinTypeBTC, UserID: cryptData.UserID})
-	if err != nil {
+	if _, err := hdkeychain.NewKeyFromString(masterPubKey); err != nil {
+		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg(fmt.Sprintf("An error occurred while creating the %v master public key.", coin))
+		return status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid %v master public key.", coin))
+	}
+
+	if _, err = q.DeleteAllCryptoAddressByUserIdAndCoin(ctx, db.DeleteAllCryptoAddressByUserIdAndCoinParams{Coin: coin, UserID: cryptData.UserID}); err != nil {
 		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "DeleteAllCryptoAddressByUserIdAndCoin").Msg(util.DefaultFailedSqlQueryMsg)
 		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 	}
 
-	if !cryptData.BtcID.Valid {
-		btcData, err := q.CreateBTCCryptoData(ctx, in.MasterPubKey)
+	if !cryptoId.Valid {
+		newCryptoId, err := createCryptoCryptoData(masterPubKey)
 		if err != nil {
-			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "CreateBTCCryptoData").Msg(util.DefaultFailedSqlQueryMsg)
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", fmt.Sprintf("Create%vCryptoData", coin)).Msg(util.DefaultFailedSqlQueryMsg)
 			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 		}
-		_, err = q.SetBTCCryptoDataByUserId(ctx, db.SetBTCCryptoDataByUserIdParams{UserID: cryptData.UserID, BtcID: btcData.ID})
-		if err != nil {
-			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "SetBTCCryptoDataByUserId").Msg(util.DefaultFailedSqlQueryMsg)
-			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
-		}
-		return nil
-	}
-	_, err = q.UpdateKeysBTCCryptoDataById(ctx, db.UpdateKeysBTCCryptoDataByIdParams{ID: cryptData.BtcID, MasterPubKey: in.MasterPubKey})
-	if err != nil {
-		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
-	}
-
-	return nil
-}
-
-func (u *UserGrpc) handleLtcCryptoDataUpdate(ctx context.Context, q *db.Queries, in *pb_v1.LtcKeysUpdateRequest, cryptData *db.CryptoDatum) error {
-	_, err := ltchdkeychain.NewKeyFromString(in.MasterPubKey)
-	if err != nil {
-		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("An error occurred while creating the LTC master public key.")
-		return status.Error(codes.InvalidArgument, "Invalid LTC master public key.")
-	}
-
-	_, err = q.DeleteAllCryptoAddressByUserIdAndCoin(ctx, db.DeleteAllCryptoAddressByUserIdAndCoinParams{Coin: db.CoinTypeLTC, UserID: cryptData.UserID})
-	if err != nil {
-		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "DeleteAllCryptoAddressByUserIdAndCoin").Msg(util.DefaultFailedSqlQueryMsg)
-		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
-	}
-
-	if !cryptData.LtcID.Valid {
-		ltcData, err := q.CreateLTCCryptoData(ctx, in.MasterPubKey)
-		if err != nil {
-			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "CreateLTCCryptoData").Msg(util.DefaultFailedSqlQueryMsg)
-			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
-		}
-		_, err = q.SetLTCCryptoDataByUserId(ctx, db.SetLTCCryptoDataByUserIdParams{UserID: cryptData.UserID, LtcID: ltcData.ID})
-		if err != nil {
-			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "SetLTCCryptoDataByUserId").Msg(util.DefaultFailedSqlQueryMsg)
+		if err := setCryptoCryptoDataByUserId(cryptData.UserID, newCryptoId); err != nil {
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", fmt.Sprintf("Set%vCryptoDataByUserId", coin)).Msg(util.DefaultFailedSqlQueryMsg)
 			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 		}
 		return nil
 	}
-	_, err = q.UpdateKeysLTCCryptoDataById(ctx, db.UpdateKeysLTCCryptoDataByIdParams{ID: cryptData.LtcID, MasterPubKey: in.MasterPubKey})
-	if err != nil {
-		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
-	}
 
-	return nil
-}
-
-func (u *UserGrpc) handleEthCryptoDataUpdate(ctx context.Context, q *db.Queries, in *pb_v1.EthKeysUpdateRequest, cryptData *db.CryptoDatum) error {
-	_, err := hdkeychain.NewKeyFromString(in.MasterPubKey)
-	if err != nil {
-		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("An error occurred while creating the ETH master public key.")
-		return status.Error(codes.InvalidArgument, "Invalid ETH master public key.")
-	}
-
-	_, err = q.DeleteAllCryptoAddressByUserIdAndCoin(ctx, db.DeleteAllCryptoAddressByUserIdAndCoinParams{Coin: db.CoinTypeETH, UserID: cryptData.UserID})
-	if err != nil {
-		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "DeleteAllCryptoAddressByUserIdAndCoin").Msg(util.DefaultFailedSqlQueryMsg)
-		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
-	}
-
-	if !cryptData.EthID.Valid {
-		ethData, err := q.CreateETHCryptoData(ctx, in.MasterPubKey)
-		if err != nil {
-			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "CreateETHCryptoData").Msg(util.DefaultFailedSqlQueryMsg)
-			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
-		}
-		_, err = q.SetETHCryptoDataByUserId(ctx, db.SetETHCryptoDataByUserIdParams{UserID: cryptData.UserID, EthID: ethData.ID})
-		if err != nil {
-			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Str("queryName", "SetETHCryptoDataByUserId").Msg(util.DefaultFailedSqlQueryMsg)
-			return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
-		}
-		return nil
-	}
-	_, err = q.UpdateKeysETHCryptoDataById(ctx, db.UpdateKeysETHCryptoDataByIdParams{ID: cryptData.EthID, MasterPubKey: in.MasterPubKey})
-	if err != nil {
+	if err := updateKeysCryptoCryptoDataById(cryptoId, masterPubKey); err != nil {
 		return status.Error(codes.Internal, util.DefaultFailedSqlQueryMsg)
 	}
 
@@ -225,7 +217,7 @@ func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoK
 
 	userId, err := util.StringToPgUUID(in.UserId)
 	if err != nil {
-		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("An error occurred while converting the string to the PostgreSQL UUID data type.")
+		u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg(util.FailedStringToPgUUIDMappingMsg)
 		return nil, status.Error(codes.InvalidArgument, util.InvalidUserIdInvalidUUIDMsg)
 	}
 
@@ -246,19 +238,19 @@ func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoK
 		}
 	}
 	if in.BtcReq != nil {
-		if err := u.handleBtcCryptoDataUpdate(ctx, q, in.BtcReq, &cryptData); err != nil {
+		if err := u.handleHDKeysCryptoDataUpdate(ctx, q, in.BtcReq.MasterPubKey, db.CoinTypeBTC, &cryptData); err != nil {
 			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("")
 			return nil, err
 		}
 	}
 	if in.LtcReq != nil {
-		if err := u.handleLtcCryptoDataUpdate(ctx, q, in.LtcReq, &cryptData); err != nil {
+		if err := u.handleHDKeysCryptoDataUpdate(ctx, q, in.LtcReq.MasterPubKey, db.CoinTypeLTC, &cryptData); err != nil {
 			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("")
 			return nil, err
 		}
 	}
 	if in.EthReq != nil {
-		if err := u.handleEthCryptoDataUpdate(ctx, q, in.EthReq, &cryptData); err != nil {
+		if err := u.handleHDKeysCryptoDataUpdate(ctx, q, in.EthReq.MasterPubKey, db.CoinTypeETH, &cryptData); err != nil {
 			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("")
 			return nil, err
 		}

@@ -2,11 +2,6 @@ package util
 
 import (
 	"sync"
-	"time"
-)
-
-const (
-	SEND_TIMEOUT time.Duration = 10 * time.Second
 )
 
 type SyncMapTypeSafe[K any, V any] struct {
