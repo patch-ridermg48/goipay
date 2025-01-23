@@ -28,7 +28,7 @@ func (i *InvoiceGrpc) CreateInvoice(ctx context.Context, req *pb_v1.CreateInvoic
 	defer tx.Rollback(ctx)
 
 	if req.Amount < 0 {
-		return nil, status.Error(codes.InvalidArgument, "Invoice amount can't be below 0.")
+		return nil, status.Error(codes.InvalidArgument, util.InvoiceAmountBelow0ErrorMsg)
 	}
 	if err := checkIfUserExistsString(ctx, i.log, q, req.UserId); err != nil {
 		return nil, err
@@ -36,9 +36,8 @@ func (i *InvoiceGrpc) CreateInvoice(ctx context.Context, req *pb_v1.CreateInvoic
 
 	invoice, err := i.paymentProcessor.HandleNewInvoice(util.PbNewInvoiceToProcessorNewInvoice(req))
 	if err != nil {
-		errMsg := "An error occurred while handling invoice."
-		i.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg(errMsg)
-		return nil, status.Error(codes.Internal, errMsg)
+		i.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg(util.InvoiceErrorWhileHandlingMsg)
+		return nil, status.Error(codes.Internal, util.InvoiceErrorWhileHandlingMsg)
 	}
 
 	tx.Commit(ctx)
@@ -53,12 +52,11 @@ func (i *InvoiceGrpc) InvoiceStatusStream(req *pb_v1.InvoiceStatusStreamRequest,
 		select {
 		case invoice := <-invoiceCn:
 			if err := stream.Send(&pb_v1.InvoiceStatusStreamResponse{Invoice: util.DbInvoiceToPbInvoice(&invoice)}); err != nil {
-				errMsg := "An error occured while sending data."
-				i.log.Err(err).Msg(errMsg)
-				return status.Error(codes.Canceled, errMsg)
+				i.log.Err(err).Msg(util.InvoiceStreamSendingDataErrorMsg)
+				return status.Error(codes.Canceled, util.InvoiceStreamSendingDataErrorMsg)
 			}
 		case <-stream.Context().Done():
-			return status.Error(codes.Canceled, "Stream has been closed.")
+			return status.Error(codes.Canceled, util.InvoiceStreamClosedErrorMsg)
 		}
 	}
 
