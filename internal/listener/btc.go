@@ -1,13 +1,12 @@
 package listener
 
 import (
-	"errors"
-
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/chekist32/goipay/internal/db"
+	"github.com/chekist32/goipay/internal/util"
 	"github.com/rs/zerolog"
 )
 
@@ -119,7 +118,7 @@ func (c *SharedBTCDaemonRpcClient) GetNetworkType() (NetworkType, error) {
 	case "signet":
 		return SignetBTC, nil
 	default:
-		return 255, errors.New("invalid network type")
+		return 255, util.InvalidNetworkTypeErr
 	}
 }
 func (c *SharedBTCDaemonRpcClient) GetCoinType() db.CoinType {

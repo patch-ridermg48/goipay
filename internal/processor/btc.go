@@ -2,7 +2,6 @@ package processor
 
 import (
 	"context"
-	"errors"
 	"net/url"
 
 	"github.com/btcsuite/btcd/btcutil"
@@ -12,6 +11,7 @@ import (
 	"github.com/chekist32/goipay/internal/db"
 	"github.com/chekist32/goipay/internal/dto"
 	"github.com/chekist32/goipay/internal/listener"
+	"github.com/chekist32/goipay/internal/util"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 )
@@ -47,7 +47,7 @@ func generateNextBTCAddressHandler(ctx context.Context, q *db.Queries, data *gen
 		case listener.RegtestBTC:
 			return &chaincfg.RegressionNetParams, nil
 		default:
-			return nil, errors.New("invalid network type")
+			return nil, util.InvalidNetworkTypeErr
 		}
 	}()
 	if err != nil {

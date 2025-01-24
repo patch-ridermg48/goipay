@@ -1,10 +1,9 @@
 package listener
 
 import (
-	"errors"
-
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/chekist32/goipay/internal/db"
+	"github.com/chekist32/goipay/internal/util"
 	ltcrpc "github.com/ltcsuite/ltcd/rpcclient"
 	"github.com/rs/zerolog"
 )
@@ -52,7 +51,7 @@ func (c *SharedLTCDaemonRpcClient) GetNetworkType() (NetworkType, error) {
 	case "signet":
 		return SignetLTC, nil
 	default:
-		return 255, errors.New("invalid network type")
+		return 255, util.InvalidNetworkTypeErr
 	}
 }
 func (c *SharedLTCDaemonRpcClient) GetTransactions(txHashes []string) ([]LTCTx, error) {

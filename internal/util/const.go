@@ -43,4 +43,6 @@ var (
 	invalidProtoBufCoinTypeErr error = errors.New("invalid protoBuf coin type")
 	invalidDbCoinTypeErr       error = errors.New("invalid db coin type")
 	invalidDbStatusTypeErr     error = errors.New("invalid db status type")
+
+	InvalidNetworkTypeErr error = errors.New("invalid network type")
 )

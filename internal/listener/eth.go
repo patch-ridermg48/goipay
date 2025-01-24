@@ -2,10 +2,10 @@ package listener
 
 import (
 	"context"
-	"errors"
 	"math/big"
 
 	"github.com/chekist32/goipay/internal/db"
+	"github.com/chekist32/goipay/internal/util"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -114,7 +114,7 @@ func (c *SharedETHDaemonRpcClient) GetNetworkType() (NetworkType, error) {
 	case 1337:
 		return PrivateETH, nil
 	default:
-		return 255, errors.New("invalid network type")
+		return 255, util.InvalidNetworkTypeErr
 	}
 }
 func (c *SharedETHDaemonRpcClient) GetCoinType() db.CoinType {
