@@ -1,13 +1,10 @@
 package listener
 
 import (
-	"context"
-	"fmt"
 	"log"
 	"testing"
 
 	"github.com/chekist32/goipay/internal/db"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,9 +14,6 @@ func getETHDaemonRpcClient() *ethclient.Client {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	tx, _, err := client.TransactionByHash(context.Background(), common.HexToHash("0xa9a8e5335f440588cbc88461b67c4f296ad4c95da4fe10ba31a75bbf76e7a45d"))
-	fmt.Printf("tx: %v\n", tx)
 
 	return client
 }
