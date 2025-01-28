@@ -33,3 +33,6 @@ coin:
   eth:
     daemon:
       url: ${ETH_DAEMON_URL}
+  bnb:
+    daemon:
+      url: ${BNB_DAEMON_URL}

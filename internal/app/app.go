@@ -77,6 +77,9 @@ type AppConfig struct {
 		Eth struct {
 			Daemon AppConfigDaemon `yaml:"daemon"`
 		} `yaml:"eth"`
+		Bnb struct {
+			Daemon AppConfigDaemon `yaml:"daemon"`
+		} `yaml:"bnb"`
 	} `yaml:"coin"`
 }
 
@@ -120,6 +123,10 @@ func NewAppConfig(path string) (*AppConfig, error) {
 	conf.Coin.Eth.Daemon.Url = os.ExpandEnv(conf.Coin.Eth.Daemon.Url)
 	conf.Coin.Eth.Daemon.User = os.ExpandEnv(conf.Coin.Eth.Daemon.User)
 	conf.Coin.Eth.Daemon.Pass = os.ExpandEnv(conf.Coin.Eth.Daemon.Pass)
+
+	conf.Coin.Bnb.Daemon.Url = os.ExpandEnv(conf.Coin.Bnb.Daemon.Url)
+	conf.Coin.Bnb.Daemon.User = os.ExpandEnv(conf.Coin.Bnb.Daemon.User)
+	conf.Coin.Bnb.Daemon.Pass = os.ExpandEnv(conf.Coin.Bnb.Daemon.Pass)
 
 	return &conf, nil
 }
@@ -275,6 +282,7 @@ func appConfigToDaemonsConfig(c *AppConfig) *dto.DaemonsConfig {
 		Btc: dto.BTCDaemonConfig(*acdTodc(&c.Coin.Btc.Daemon)),
 		Ltc: dto.LTCDaemonConfig(*acdTodc(&c.Coin.Ltc.Daemon)),
 		Eth: dto.ETHDaemonConfig(*acdTodc(&c.Coin.Eth.Daemon)),
+		Bnb: dto.BNBDaemonConfig(*acdTodc(&c.Coin.Bnb.Daemon)),
 	}
 }
 

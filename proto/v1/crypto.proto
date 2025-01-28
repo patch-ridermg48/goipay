@@ -23,6 +23,32 @@ enum CoinType {
     BNB_ERC20 = 15;
     ATOM_ERC20 = 16;
     ARB_ERC20 = 17;
+
+    BNB = 18;
+    // BEP20
+    BSCUSD_BEP20 = 19;
+    USDC_BEP20 = 20;
+    DAI_BEP20 = 21;
+    BUSD_BEP20 = 22;
+    WBTC_BEP20 = 23;
+    BTCB_BEP20 = 24;
+    UNI_BEP20 = 25;
+    LINK_BEP20 = 26;
+    AAVE_BEP20 = 27;
+    MATIC_BEP20 = 28;
+    SHIB_BEP20 = 29;
+    ATOM_BEP20 = 30;
+    ARB_BEP20 = 31;
+    ETH_BEP20 = 32;
+    XRP_BEP20 = 33;
+    ADA_BEP20 = 34;
+    TRX_BEP20 = 35;
+    DOGE_BEP20 = 36;
+    LTC_BEP20 = 37;
+    BCH_BEP20 = 38;
+    TWT_BEP20 = 39;
+    AVAX_BEP20 = 40;
+    CAKE_BEP20 = 41;
 }
 
 message XmrKeysUpdateRequest {
@@ -39,5 +65,9 @@ message LtcKeysUpdateRequest {
 }
 
 message EthKeysUpdateRequest {
+    string masterPubKey = 1;
+}
+
+message BnbKeysUpdateRequest {
     string masterPubKey = 1;
 }

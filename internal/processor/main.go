@@ -156,6 +156,13 @@ func NewPaymentProcessor(ctx context.Context, dbConnPool *pgxpool.Pool, c *dto.D
 		}
 		cryptoProcessors[eth.coin] = eth
 	}
+	if c.Bnb.Url != "" {
+		bnb, err := newBnbProcessor(log, dbConnPool, invoiceCn, c)
+		if err != nil {
+			return nil, err
+		}
+		cryptoProcessors[bnb.coin] = bnb
+	}
 
 	pp := &PaymentProcessor{
 		dbConnPool:       dbConnPool,

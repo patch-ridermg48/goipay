@@ -169,6 +169,21 @@ func (u *UserGrpc) handleHDKeysCryptoDataUpdate(ctx context.Context, q *db.Queri
 					return err
 				},
 				nil
+		case db.CoinTypeBNB:
+			return cryptData.BnbID,
+				func(masterPubKey string) (pgtype.UUID, error) {
+					data, err := q.CreateBNBCryptoData(ctx, masterPubKey)
+					return data.ID, err
+				},
+				func(userId, cryptoId pgtype.UUID) error {
+					_, err := q.SetBNBCryptoDataByUserId(ctx, db.SetBNBCryptoDataByUserIdParams{UserID: userId, BnbID: cryptoId})
+					return err
+				},
+				func(cryptoId pgtype.UUID, masterPubKey string) error {
+					_, err := q.UpdateKeysBNBCryptoDataById(ctx, db.UpdateKeysBNBCryptoDataByIdParams{ID: cryptoId, MasterPubKey: masterPubKey})
+					return err
+				},
+				nil
 		default:
 			return pgtype.UUID{}, nil, nil, nil, errors.New("unsupported coin type")
 		}
@@ -251,6 +266,12 @@ func (u *UserGrpc) UpdateCryptoKeys(ctx context.Context, in *pb_v1.UpdateCryptoK
 	}
 	if in.EthReq != nil {
 		if err := u.handleHDKeysCryptoDataUpdate(ctx, q, in.EthReq.MasterPubKey, db.CoinTypeETH, &cryptData); err != nil {
+			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("")
+			return nil, err
+		}
+	}
+	if in.BnbReq != nil {
+		if err := u.handleHDKeysCryptoDataUpdate(ctx, q, in.BnbReq.MasterPubKey, db.CoinTypeBNB, &cryptData); err != nil {
 			u.log.Err(err).Str(util.RequestIdLogKey, util.GetRequestIdOrEmptyString(ctx)).Msg("")
 			return nil, err
 		}

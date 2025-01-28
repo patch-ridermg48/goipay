@@ -11,6 +11,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createBNBCryptoData = `-- name: CreateBNBCryptoData :one
+INSERT INTO bnb_crypto_data(master_pub_key) VALUES ($1)
+RETURNING id, master_pub_key, last_major_index, last_minor_index
+`
+
+// BNB
+func (q *Queries) CreateBNBCryptoData(ctx context.Context, masterPubKey string) (BnbCryptoDatum, error) {
+	row := q.db.QueryRow(ctx, createBNBCryptoData, masterPubKey)
+	var i BnbCryptoDatum
+	err := row.Scan(
+		&i.ID,
+		&i.MasterPubKey,
+		&i.LastMajorIndex,
+		&i.LastMinorIndex,
+	)
+	return i, err
+}
+
 const createBTCCryptoData = `-- name: CreateBTCCryptoData :one
 INSERT INTO btc_crypto_data(master_pub_key) VALUES ($1)
 RETURNING id, master_pub_key, last_major_index, last_minor_index
@@ -30,8 +48,8 @@ func (q *Queries) CreateBTCCryptoData(ctx context.Context, masterPubKey string) 
 }
 
 const createCryptoData = `-- name: CreateCryptoData :one
-INSERT INTO crypto_data(xmr_id, btc_id, ltc_id, eth_id, user_id) VALUES ($1, $2, $3, $4, $5)
-RETURNING user_id, xmr_id, btc_id, ltc_id, eth_id
+INSERT INTO crypto_data(xmr_id, btc_id, ltc_id, eth_id, bnb_id, user_id) VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING user_id, xmr_id, btc_id, ltc_id, eth_id, bnb_id
 `
 
 type CreateCryptoDataParams struct {
@@ -39,6 +57,7 @@ type CreateCryptoDataParams struct {
 	BtcID  pgtype.UUID
 	LtcID  pgtype.UUID
 	EthID  pgtype.UUID
+	BnbID  pgtype.UUID
 	UserID pgtype.UUID
 }
 
@@ -48,6 +67,7 @@ func (q *Queries) CreateCryptoData(ctx context.Context, arg CreateCryptoDataPara
 		arg.BtcID,
 		arg.LtcID,
 		arg.EthID,
+		arg.BnbID,
 		arg.UserID,
 	)
 	var i CryptoDatum
@@ -57,6 +77,7 @@ func (q *Queries) CreateCryptoData(ctx context.Context, arg CreateCryptoDataPara
 		&i.BtcID,
 		&i.LtcID,
 		&i.EthID,
+		&i.BnbID,
 	)
 	return i, err
 }
@@ -122,7 +143,7 @@ func (q *Queries) CreateXMRCryptoData(ctx context.Context, arg CreateXMRCryptoDa
 }
 
 const findCryptoDataByUserId = `-- name: FindCryptoDataByUserId :one
-SELECT user_id, xmr_id, btc_id, ltc_id, eth_id FROM crypto_data 
+SELECT user_id, xmr_id, btc_id, ltc_id, eth_id, bnb_id FROM crypto_data 
 WHERE user_id = $1
 `
 
@@ -135,7 +156,27 @@ func (q *Queries) FindCryptoDataByUserId(ctx context.Context, userID pgtype.UUID
 		&i.BtcID,
 		&i.LtcID,
 		&i.EthID,
+		&i.BnbID,
 	)
+	return i, err
+}
+
+const findIndicesAndLockBNBCryptoDataById = `-- name: FindIndicesAndLockBNBCryptoDataById :one
+SELECT last_major_index, last_minor_index 
+FROM bnb_crypto_data
+WHERE id = $1
+FOR UPDATE
+`
+
+type FindIndicesAndLockBNBCryptoDataByIdRow struct {
+	LastMajorIndex int32
+	LastMinorIndex int32
+}
+
+func (q *Queries) FindIndicesAndLockBNBCryptoDataById(ctx context.Context, id pgtype.UUID) (FindIndicesAndLockBNBCryptoDataByIdRow, error) {
+	row := q.db.QueryRow(ctx, findIndicesAndLockBNBCryptoDataById, id)
+	var i FindIndicesAndLockBNBCryptoDataByIdRow
+	err := row.Scan(&i.LastMajorIndex, &i.LastMinorIndex)
 	return i, err
 }
 
@@ -215,6 +256,20 @@ func (q *Queries) FindIndicesAndLockXMRCryptoDataById(ctx context.Context, id pg
 	return i, err
 }
 
+const findKeysAndLockBNBCryptoDataById = `-- name: FindKeysAndLockBNBCryptoDataById :one
+SELECT master_pub_key
+FROM bnb_crypto_data
+WHERE id = $1
+FOR SHARE
+`
+
+func (q *Queries) FindKeysAndLockBNBCryptoDataById(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, findKeysAndLockBNBCryptoDataById, id)
+	var master_pub_key string
+	err := row.Scan(&master_pub_key)
+	return master_pub_key, err
+}
+
 const findKeysAndLockBTCCryptoDataById = `-- name: FindKeysAndLockBTCCryptoDataById :one
 SELECT master_pub_key
 FROM btc_crypto_data
@@ -276,11 +331,37 @@ func (q *Queries) FindKeysAndLockXMRCryptoDataById(ctx context.Context, id pgtyp
 	return i, err
 }
 
+const setBNBCryptoDataByUserId = `-- name: SetBNBCryptoDataByUserId :one
+UPDATE crypto_data
+SET bnb_id = $2
+WHERE user_id = $1
+RETURNING user_id, xmr_id, btc_id, ltc_id, eth_id, bnb_id
+`
+
+type SetBNBCryptoDataByUserIdParams struct {
+	UserID pgtype.UUID
+	BnbID  pgtype.UUID
+}
+
+func (q *Queries) SetBNBCryptoDataByUserId(ctx context.Context, arg SetBNBCryptoDataByUserIdParams) (CryptoDatum, error) {
+	row := q.db.QueryRow(ctx, setBNBCryptoDataByUserId, arg.UserID, arg.BnbID)
+	var i CryptoDatum
+	err := row.Scan(
+		&i.UserID,
+		&i.XmrID,
+		&i.BtcID,
+		&i.LtcID,
+		&i.EthID,
+		&i.BnbID,
+	)
+	return i, err
+}
+
 const setBTCCryptoDataByUserId = `-- name: SetBTCCryptoDataByUserId :one
 UPDATE crypto_data
 SET btc_id = $2
 WHERE user_id = $1
-RETURNING user_id, xmr_id, btc_id, ltc_id, eth_id
+RETURNING user_id, xmr_id, btc_id, ltc_id, eth_id, bnb_id
 `
 
 type SetBTCCryptoDataByUserIdParams struct {
@@ -297,6 +378,7 @@ func (q *Queries) SetBTCCryptoDataByUserId(ctx context.Context, arg SetBTCCrypto
 		&i.BtcID,
 		&i.LtcID,
 		&i.EthID,
+		&i.BnbID,
 	)
 	return i, err
 }
@@ -305,7 +387,7 @@ const setETHCryptoDataByUserId = `-- name: SetETHCryptoDataByUserId :one
 UPDATE crypto_data
 SET eth_id = $2
 WHERE user_id = $1
-RETURNING user_id, xmr_id, btc_id, ltc_id, eth_id
+RETURNING user_id, xmr_id, btc_id, ltc_id, eth_id, bnb_id
 `
 
 type SetETHCryptoDataByUserIdParams struct {
@@ -322,6 +404,7 @@ func (q *Queries) SetETHCryptoDataByUserId(ctx context.Context, arg SetETHCrypto
 		&i.BtcID,
 		&i.LtcID,
 		&i.EthID,
+		&i.BnbID,
 	)
 	return i, err
 }
@@ -330,7 +413,7 @@ const setLTCCryptoDataByUserId = `-- name: SetLTCCryptoDataByUserId :one
 UPDATE crypto_data
 SET ltc_id = $2
 WHERE user_id = $1
-RETURNING user_id, xmr_id, btc_id, ltc_id, eth_id
+RETURNING user_id, xmr_id, btc_id, ltc_id, eth_id, bnb_id
 `
 
 type SetLTCCryptoDataByUserIdParams struct {
@@ -347,6 +430,7 @@ func (q *Queries) SetLTCCryptoDataByUserId(ctx context.Context, arg SetLTCCrypto
 		&i.BtcID,
 		&i.LtcID,
 		&i.EthID,
+		&i.BnbID,
 	)
 	return i, err
 }
@@ -355,7 +439,7 @@ const setXMRCryptoDataByUserId = `-- name: SetXMRCryptoDataByUserId :one
 UPDATE crypto_data
 SET xmr_id = $2 
 WHERE user_id = $1
-RETURNING user_id, xmr_id, btc_id, ltc_id, eth_id
+RETURNING user_id, xmr_id, btc_id, ltc_id, eth_id, bnb_id
 `
 
 type SetXMRCryptoDataByUserIdParams struct {
@@ -372,6 +456,33 @@ func (q *Queries) SetXMRCryptoDataByUserId(ctx context.Context, arg SetXMRCrypto
 		&i.BtcID,
 		&i.LtcID,
 		&i.EthID,
+		&i.BnbID,
+	)
+	return i, err
+}
+
+const updateIndicesBNBCryptoDataById = `-- name: UpdateIndicesBNBCryptoDataById :one
+UPDATE bnb_crypto_data
+SET last_major_index = $2,
+    last_minor_index = $3
+WHERE id = $1
+RETURNING id, master_pub_key, last_major_index, last_minor_index
+`
+
+type UpdateIndicesBNBCryptoDataByIdParams struct {
+	ID             pgtype.UUID
+	LastMajorIndex int32
+	LastMinorIndex int32
+}
+
+func (q *Queries) UpdateIndicesBNBCryptoDataById(ctx context.Context, arg UpdateIndicesBNBCryptoDataByIdParams) (BnbCryptoDatum, error) {
+	row := q.db.QueryRow(ctx, updateIndicesBNBCryptoDataById, arg.ID, arg.LastMajorIndex, arg.LastMinorIndex)
+	var i BnbCryptoDatum
+	err := row.Scan(
+		&i.ID,
+		&i.MasterPubKey,
+		&i.LastMajorIndex,
+		&i.LastMinorIndex,
 	)
 	return i, err
 }
@@ -475,6 +586,32 @@ func (q *Queries) UpdateIndicesXMRCryptoDataById(ctx context.Context, arg Update
 		&i.ID,
 		&i.PrivViewKey,
 		&i.PubSpendKey,
+		&i.LastMajorIndex,
+		&i.LastMinorIndex,
+	)
+	return i, err
+}
+
+const updateKeysBNBCryptoDataById = `-- name: UpdateKeysBNBCryptoDataById :one
+UPDATE bnb_crypto_data
+SET master_pub_key = $2,
+    last_major_index = 0,
+    last_minor_index = 0
+WHERE id = $1
+RETURNING id, master_pub_key, last_major_index, last_minor_index
+`
+
+type UpdateKeysBNBCryptoDataByIdParams struct {
+	ID           pgtype.UUID
+	MasterPubKey string
+}
+
+func (q *Queries) UpdateKeysBNBCryptoDataById(ctx context.Context, arg UpdateKeysBNBCryptoDataByIdParams) (BnbCryptoDatum, error) {
+	row := q.db.QueryRow(ctx, updateKeysBNBCryptoDataById, arg.ID, arg.MasterPubKey)
+	var i BnbCryptoDatum
+	err := row.Scan(
+		&i.ID,
+		&i.MasterPubKey,
 		&i.LastMajorIndex,
 		&i.LastMinorIndex,
 	)

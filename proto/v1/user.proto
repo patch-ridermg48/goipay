@@ -17,6 +17,7 @@ message UpdateCryptoKeysRequest {
     optional crypto.v1.BtcKeysUpdateRequest btcReq = 3;
     optional crypto.v1.LtcKeysUpdateRequest ltcReq = 4;
     optional crypto.v1.EthKeysUpdateRequest ethReq = 5;
+    optional crypto.v1.BnbKeysUpdateRequest bnbReq = 6;
 }
 message UpdateCryptoKeysResponse {}
 
