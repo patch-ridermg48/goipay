@@ -1,6 +1,8 @@
 package listener
 
 import (
+	"unsafe"
+
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/chekist32/goipay/internal/db"
 	"github.com/chekist32/goipay/internal/util"
@@ -56,17 +58,7 @@ func (c *SharedLTCDaemonRpcClient) GetNetworkType() (NetworkType, error) {
 }
 func (c *SharedLTCDaemonRpcClient) GetTransactions(txHashes []string) ([]LTCTx, error) {
 	res, err := c.SharedBTCDaemonRpcClient.GetTransactions(txHashes)
-	if err != nil {
-		return nil, err
-	}
-	txCount := len(res)
-
-	ltcTxs := make([]LTCTx, 0, txCount)
-	for i := 0; i < txCount; i++ {
-		ltcTxs = append(ltcTxs, LTCTx(res[i]))
-	}
-
-	return ltcTxs, nil
+	return *(*[]LTCTx)(unsafe.Pointer(&res)), err
 }
 func (c *SharedLTCDaemonRpcClient) GetBlockByHeight(height uint64) (LTCBlock, error) {
 	res, err := c.SharedBTCDaemonRpcClient.GetBlockByHeight(height)
