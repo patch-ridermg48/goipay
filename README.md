@@ -15,6 +15,7 @@ A lightweight crypto payment processor microservice, written in Golang, designed
 - BTC
 - LTC
 - ETH (USDT, USDC, DAI, WBTC, UNI, LINK, AAVE, CRV, MATIC, SHIB, BNB, ATOM, ARB)
+- BNB (BSC-USD, USDC, DAI, BUSD, WBTC, BTCB, UNI, LINK, AAVE, MATIC, SHIB, ATOM, ARB, ETH, XRP, ADA, TRX, DOGE, LTC, BCH, TWT, AVAX, CAKE)
 
 ## Getting Started
 ### Prerequisites
@@ -57,6 +58,8 @@ A lightweight crypto payment processor microservice, written in Golang, designed
   LTC_DAEMON_PASS=pass
 
   ETH_DAEMON_URL=https://ethereum.publicnode.com
+
+  BNB_DAEMON_URL=https://bsc-dataseed.binance.org
   ```
 - Inside the root dir you can find an example ```docker-compose.yml``` file. For testing purposes can be run without editing.
   ```sh
