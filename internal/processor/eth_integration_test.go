@@ -233,7 +233,7 @@ func TestVerifyETHTxHandler(t *testing.T) {
 					}
 
 					// When
-					amount, err := verifyETHTxHandler(ctx, q, &verifyTxHandlerData[listener.ETHTx]{invoice: expectedInvoice, tx: txs[0]})
+					amount, err := verifyETHBasedTxHandler(ctx, q, &verifyTxHandlerData[listener.ETHTx]{invoice: expectedInvoice, tx: txs[0]})
 
 					// Assert
 					assert.NoError(t, err)
@@ -364,7 +364,7 @@ func TestVerifyETHTxHandler(t *testing.T) {
 					}
 
 					// When
-					amount, err := verifyETHTxHandler(ctx, q, &verifyTxHandlerData[listener.ETHTx]{invoice: expectedInvoice, tx: txs[0]})
+					amount, err := verifyETHBasedTxHandler(ctx, q, &verifyTxHandlerData[listener.ETHTx]{invoice: expectedInvoice, tx: txs[0]})
 
 					// Assert
 					assert.NoError(t, err)
