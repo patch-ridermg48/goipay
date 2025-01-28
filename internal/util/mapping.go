@@ -68,6 +68,56 @@ func PbCoinToDbCoin(coin pb_v1.CoinType) (db.CoinType, error) {
 		return db.CoinTypeARBERC20, nil
 	case pb_v1.CoinType_AAVE_ERC20:
 		return db.CoinTypeAAVEERC20, nil
+
+	case pb_v1.CoinType_BNB:
+		return db.CoinTypeBNB, nil
+	// BEP20
+	case pb_v1.CoinType_BSCUSD_BEP20:
+		return db.CoinTypeBSCUSDBEP20, nil
+	case pb_v1.CoinType_USDC_BEP20:
+		return db.CoinTypeUSDCBEP20, nil
+	case pb_v1.CoinType_DAI_BEP20:
+		return db.CoinTypeDAIBEP20, nil
+	case pb_v1.CoinType_BUSD_BEP20:
+		return db.CoinTypeBUSDBEP20, nil
+	case pb_v1.CoinType_WBTC_BEP20:
+		return db.CoinTypeWBTCBEP20, nil
+	case pb_v1.CoinType_BTCB_BEP20:
+		return db.CoinTypeBTCBBEP20, nil
+	case pb_v1.CoinType_UNI_BEP20:
+		return db.CoinTypeUNIBEP20, nil
+	case pb_v1.CoinType_LINK_BEP20:
+		return db.CoinTypeLINKBEP20, nil
+	case pb_v1.CoinType_AAVE_BEP20:
+		return db.CoinTypeAAVEBEP20, nil
+	case pb_v1.CoinType_MATIC_BEP20:
+		return db.CoinTypeMATICBEP20, nil
+	case pb_v1.CoinType_SHIB_BEP20:
+		return db.CoinTypeSHIBBEP20, nil
+	case pb_v1.CoinType_ATOM_BEP20:
+		return db.CoinTypeATOMBEP20, nil
+	case pb_v1.CoinType_ARB_BEP20:
+		return db.CoinTypeARBBEP20, nil
+	case pb_v1.CoinType_ETH_BEP20:
+		return db.CoinTypeETHBEP20, nil
+	case pb_v1.CoinType_XRP_BEP20:
+		return db.CoinTypeXRPBEP20, nil
+	case pb_v1.CoinType_ADA_BEP20:
+		return db.CoinTypeADABEP20, nil
+	case pb_v1.CoinType_TRX_BEP20:
+		return db.CoinTypeTRXBEP20, nil
+	case pb_v1.CoinType_DOGE_BEP20:
+		return db.CoinTypeDOGEBEP20, nil
+	case pb_v1.CoinType_LTC_BEP20:
+		return db.CoinTypeLTCBEP20, nil
+	case pb_v1.CoinType_BCH_BEP20:
+		return db.CoinTypeBCHBEP20, nil
+	case pb_v1.CoinType_TWT_BEP20:
+		return db.CoinTypeTWTBEP20, nil
+	case pb_v1.CoinType_AVAX_BEP20:
+		return db.CoinTypeAVAXBEP20, nil
+	case pb_v1.CoinType_CAKE_BEP20:
+		return db.CoinTypeCAKEBEP20, nil
 	}
 
 	return "", invalidProtoBufCoinTypeErr
@@ -113,6 +163,56 @@ func DbCoinToPbCoin(coin db.CoinType) (pb_v1.CoinType, error) {
 		return pb_v1.CoinType_ATOM_ERC20, nil
 	case db.CoinTypeARBERC20:
 		return pb_v1.CoinType_ARB_ERC20, nil
+
+	case db.CoinTypeBNB:
+		return pb_v1.CoinType_BNB, nil
+	// BEP20
+	case db.CoinTypeBSCUSDBEP20:
+		return pb_v1.CoinType_BSCUSD_BEP20, nil
+	case db.CoinTypeUSDCBEP20:
+		return pb_v1.CoinType_USDC_BEP20, nil
+	case db.CoinTypeDAIBEP20:
+		return pb_v1.CoinType_DAI_BEP20, nil
+	case db.CoinTypeBUSDBEP20:
+		return pb_v1.CoinType_BUSD_BEP20, nil
+	case db.CoinTypeWBTCBEP20:
+		return pb_v1.CoinType_WBTC_BEP20, nil
+	case db.CoinTypeBTCBBEP20:
+		return pb_v1.CoinType_BTCB_BEP20, nil
+	case db.CoinTypeUNIBEP20:
+		return pb_v1.CoinType_UNI_BEP20, nil
+	case db.CoinTypeLINKBEP20:
+		return pb_v1.CoinType_LINK_BEP20, nil
+	case db.CoinTypeAAVEBEP20:
+		return pb_v1.CoinType_AAVE_BEP20, nil
+	case db.CoinTypeMATICBEP20:
+		return pb_v1.CoinType_MATIC_BEP20, nil
+	case db.CoinTypeSHIBBEP20:
+		return pb_v1.CoinType_SHIB_BEP20, nil
+	case db.CoinTypeATOMBEP20:
+		return pb_v1.CoinType_ATOM_BEP20, nil
+	case db.CoinTypeARBBEP20:
+		return pb_v1.CoinType_ARB_BEP20, nil
+	case db.CoinTypeETHBEP20:
+		return pb_v1.CoinType_ETH_BEP20, nil
+	case db.CoinTypeXRPBEP20:
+		return pb_v1.CoinType_XRP_BEP20, nil
+	case db.CoinTypeADABEP20:
+		return pb_v1.CoinType_ADA_BEP20, nil
+	case db.CoinTypeTRXBEP20:
+		return pb_v1.CoinType_TRX_BEP20, nil
+	case db.CoinTypeDOGEBEP20:
+		return pb_v1.CoinType_DOGE_BEP20, nil
+	case db.CoinTypeLTCBEP20:
+		return pb_v1.CoinType_LTC_BEP20, nil
+	case db.CoinTypeBCHBEP20:
+		return pb_v1.CoinType_BCH_BEP20, nil
+	case db.CoinTypeTWTBEP20:
+		return pb_v1.CoinType_TWT_BEP20, nil
+	case db.CoinTypeAVAXBEP20:
+		return pb_v1.CoinType_AVAX_BEP20, nil
+	case db.CoinTypeCAKEBEP20:
+		return pb_v1.CoinType_CAKE_BEP20, nil
 	}
 
 	return math.MaxInt32, invalidDbCoinTypeErr
