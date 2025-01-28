@@ -1,5 +1,5 @@
 -- name: CreateCryptoData :one
-INSERT INTO crypto_data(xmr_id, btc_id, ltc_id, eth_id, user_id) VALUES ($1, $2, $3, $4, $5)
+INSERT INTO crypto_data(xmr_id, btc_id, ltc_id, eth_id, bnb_id, user_id) VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: FindCryptoDataByUserId :one
@@ -27,6 +27,12 @@ RETURNING *;
 -- name: SetETHCryptoDataByUserId :one
 UPDATE crypto_data
 SET eth_id = $2
+WHERE user_id = $1
+RETURNING *;
+
+-- name: SetBNBCryptoDataByUserId :one
+UPDATE crypto_data
+SET bnb_id = $2
 WHERE user_id = $1
 RETURNING *;
 
@@ -155,6 +161,38 @@ FOR UPDATE;
 
 -- name: UpdateIndicesETHCryptoDataById :one
 UPDATE eth_crypto_data
+SET last_major_index = $2,
+    last_minor_index = $3
+WHERE id = $1
+RETURNING *;
+
+-- BNB
+-- name: CreateBNBCryptoData :one
+INSERT INTO bnb_crypto_data(master_pub_key) VALUES ($1)
+RETURNING *;
+
+-- name: FindKeysAndLockBNBCryptoDataById :one
+SELECT master_pub_key
+FROM bnb_crypto_data
+WHERE id = $1
+FOR SHARE;
+
+-- name: UpdateKeysBNBCryptoDataById :one
+UPDATE bnb_crypto_data
+SET master_pub_key = $2,
+    last_major_index = 0,
+    last_minor_index = 0
+WHERE id = $1
+RETURNING *;
+
+-- name: FindIndicesAndLockBNBCryptoDataById :one
+SELECT last_major_index, last_minor_index 
+FROM bnb_crypto_data
+WHERE id = $1
+FOR UPDATE;
+
+-- name: UpdateIndicesBNBCryptoDataById :one
+UPDATE bnb_crypto_data
 SET last_major_index = $2,
     last_minor_index = $3
 WHERE id = $1
