@@ -32,6 +32,10 @@ const (
 	GoerliETH
 	SepoliaETH
 	PrivateETH
+
+	MainnetBNB
+	TestnetBNB
+	PrivateBNB
 )
 
 type transactionPoolSync struct {
