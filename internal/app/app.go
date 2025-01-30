@@ -148,14 +148,14 @@ type App struct {
 
 func (a *App) Start(ctx context.Context) error {
 	if err := a.dbConnPool.Ping(ctx); err != nil {
-		a.log.Err(err).Msg("failed to connect to database")
+		a.log.Err(err).Msg("Failed to connect to the database.")
 		return err
 	}
 	defer a.dbConnPool.Close()
 
 	lis, err := net.Listen("tcp", a.config.Server.Host+":"+a.config.Server.Port)
 	if err != nil {
-		a.log.Fatal().Msgf("failed to listen on port %v: %v", a.config.Server.Port, err)
+		a.log.Fatal().Err(err).Msgf("Failed to listen on port %v.", a.config.Server.Port)
 	}
 
 	g := grpc.NewServer(getGrpcServerOptions(a)...)
@@ -175,7 +175,7 @@ func (a *App) Start(ctx context.Context) error {
 			case <-time.After(util.HEALTH_CHECK_TIEMOUT):
 				s := grpc_health_v1.HealthCheckResponse_SERVING
 				if err := a.dbConnPool.Ping(ctx); err != nil {
-					a.log.Err(err).Msg("Database health check failed.")
+					a.log.Err(err).Msg("The database health check failed.")
 					s = grpc_health_v1.HealthCheckResponse_NOT_SERVING
 				}
 				h.SetServingStatus("", s)
@@ -188,7 +188,7 @@ func (a *App) Start(ctx context.Context) error {
 	ch := make(chan error, 1)
 	go func() {
 		if err := g.Serve(lis); err != nil {
-			a.log.Err(err).Msg("failed to start server")
+			a.log.Err(err).Msg("Failed to start the server.")
 			ch <- err
 		}
 		close(ch)
