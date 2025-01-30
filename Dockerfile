@@ -1,16 +1,17 @@
 FROM golang:1.22-alpine AS builder
 
+ARG TARGETARCH
+
+RUN apk update && apk add --no-cache make wget
+
+RUN wget -O /grpc-health-probe "https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.37/grpc_health_probe-linux-$TARGETARCH"
+
 WORKDIR /app
 
-# Installing system dependencies
-RUN apk update && apk add --no-cache make
-
-# Installing golang dependencies
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
-# Buidling
 COPY . .
 RUN make build
 
@@ -21,6 +22,9 @@ WORKDIR /app
 
 COPY --from=builder /app/bin/server .
 COPY --from=builder /app/config.yml .
+COPY --from=builder /grpc-health-probe /usr/local/bin/grpc-health-probe
+
+RUN chmod +x /usr/local/bin/grpc-health-probe
 
 EXPOSE 3000
 
