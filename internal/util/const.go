@@ -8,8 +8,9 @@ import (
 type contextKey string
 
 const (
-	MIN_SYNC_TIMEOUT time.Duration = 10 * time.Second
-	SEND_TIMEOUT     time.Duration = 10 * time.Second
+	MIN_SYNC_TIMEOUT     time.Duration = 10 * time.Second
+	SEND_TIMEOUT         time.Duration = 10 * time.Second
+	HEALTH_CHECK_TIEMOUT time.Duration = 5 * time.Second
 )
 
 const (

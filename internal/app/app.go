@@ -9,15 +9,19 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/chekist32/goipay/internal/dto"
 	handler_v1 "github.com/chekist32/goipay/internal/handler/v1"
 	pb_v1 "github.com/chekist32/goipay/internal/pb/v1"
 	"github.com/chekist32/goipay/internal/processor"
+	"github.com/chekist32/goipay/internal/util"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"gopkg.in/yaml.v3"
 )
@@ -161,6 +165,25 @@ func (a *App) Start(ctx context.Context) error {
 	if a.opts.ReflectionEnabled {
 		reflection.Register(g)
 	}
+
+	h := health.NewServer()
+	grpc_health_v1.RegisterHealthServer(g, h)
+	h.SetServingStatus("", grpc_health_v1.HealthCheckResponse_UNKNOWN)
+	go func() {
+		for {
+			select {
+			case <-time.After(util.HEALTH_CHECK_TIEMOUT):
+				s := grpc_health_v1.HealthCheckResponse_SERVING
+				if err := a.dbConnPool.Ping(ctx); err != nil {
+					a.log.Err(err).Msg("Database health check failed.")
+					s = grpc_health_v1.HealthCheckResponse_NOT_SERVING
+				}
+				h.SetServingStatus("", s)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	ch := make(chan error, 1)
 	go func() {
