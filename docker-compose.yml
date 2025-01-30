@@ -38,3 +38,8 @@ services:
     command: ["--log-level=debug", "--reflection"]
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=localhost:3000", "-tls", "-tls-ca-cert=/app/cert/server/ca.crt"]
+      timeout: 10s
+      interval: 5s
+      retries: 5
