@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"strings"
@@ -148,14 +147,15 @@ type App struct {
 
 func (a *App) Start(ctx context.Context) error {
 	if err := a.dbConnPool.Ping(ctx); err != nil {
-		a.log.Err(err).Msg("Failed to connect to the database.")
+		a.log.Info().Err(err).Msg("Failed to connect to the database.")
 		return err
 	}
 	defer a.dbConnPool.Close()
 
 	lis, err := net.Listen("tcp", a.config.Server.Host+":"+a.config.Server.Port)
 	if err != nil {
-		a.log.Fatal().Err(err).Msgf("Failed to listen on port %v.", a.config.Server.Port)
+		a.log.Info().Err(err).Msgf("Failed to listen on port %v.", a.config.Server.Port)
+		return err
 	}
 
 	g := grpc.NewServer(getGrpcServerOptions(a)...)
@@ -175,7 +175,7 @@ func (a *App) Start(ctx context.Context) error {
 			case <-time.After(util.HEALTH_CHECK_TIEMOUT):
 				s := grpc_health_v1.HealthCheckResponse_SERVING
 				if err := a.dbConnPool.Ping(ctx); err != nil {
-					a.log.Err(err).Msg("The database health check failed.")
+					a.log.Debug().Err(err).Msg("The database health check failed.")
 					s = grpc_health_v1.HealthCheckResponse_NOT_SERVING
 				}
 				h.SetServingStatus("", s)
@@ -188,7 +188,7 @@ func (a *App) Start(ctx context.Context) error {
 	ch := make(chan error, 1)
 	go func() {
 		if err := g.Serve(lis); err != nil {
-			a.log.Err(err).Msg("Failed to start the server.")
+			a.log.Info().Err(err).Msg("Failed to start the server.")
 			ch <- err
 		}
 		close(ch)
@@ -214,33 +214,33 @@ func getGrpcServerOptions(a *App) []grpc.ServerOption {
 		),
 	}
 
-	if creds, enabled := getGrpcCrednetials(a.config, a.opts); enabled {
+	if creds, enabled := getGrpcCrednetials(a.log, a.config, a.opts); enabled {
 		grpcOpts = append(grpcOpts, creds)
 	}
 
 	return grpcOpts
 }
 
-func getMtlsCofig(c *AppConfig, opts *CliOpts) *tls.Config {
-	config := getTlsConfig(c)
+func getMtlsCofig(log *zerolog.Logger, c *AppConfig, opts *CliOpts) *tls.Config {
+	config := getTlsConfig(log, c)
 
 	if strings.TrimSpace(opts.ClientCAPaths) == "" {
-		log.Fatal("-client-ca must specify at least one path")
+		log.Fatal().Msg("-client-ca must specify at least one path")
 	}
 
 	paths := strings.Split(strings.TrimSpace(opts.ClientCAPaths), ",")
 	if len(paths) == 0 {
-		log.Fatal("-client-ca must specify at least one path")
+		log.Fatal().Msg("-client-ca must specify at least one path")
 	}
 
 	certPool := x509.NewCertPool()
 	for i := 0; i < len(paths); i++ {
 		trustedCert, err := os.ReadFile(paths[i])
 		if err != nil {
-			log.Fatalf("Failed to load trusted client certificate %v", err)
+			log.Fatal().Err(err).Msg("Failed to load trusted client certificate.")
 		}
 		if !certPool.AppendCertsFromPEM(trustedCert) {
-			log.Fatalf("Failed to append trusted client certificate %v to certificate pool", paths[i])
+			log.Fatal().Msgf("Failed to append trusted client certificate %v to certificate pool.", paths[i])
 		}
 	}
 
@@ -250,20 +250,20 @@ func getMtlsCofig(c *AppConfig, opts *CliOpts) *tls.Config {
 	return config
 }
 
-func getTlsConfig(c *AppConfig) *tls.Config {
+func getTlsConfig(log *zerolog.Logger, c *AppConfig) *tls.Config {
 	serverCert, err := tls.LoadX509KeyPair(c.Server.Tls.Cert, c.Server.Tls.Key)
 	if err != nil {
-		log.Fatalf("Failed to load server certificate and key %v", err)
+		log.Fatal().Err(err).Msg("Failed to load server certificate and key.")
 	}
 
 	trustedCert, err := os.ReadFile(c.Server.Tls.Ca)
 	if err != nil {
-		log.Fatalf("Failed to load trusted server certificate %v", err)
+		log.Fatal().Err(err).Msg("Failed to load trusted server certificate.")
 	}
 
 	certPool := x509.NewCertPool()
 	if !certPool.AppendCertsFromPEM(trustedCert) {
-		log.Fatalf("Failed to append trusted server certificate %v to certificate pool", c.Server.Tls.Ca)
+		log.Fatal().Msgf("Failed to append trusted server certificate %v to certificate pool.", c.Server.Tls.Ca)
 	}
 
 	tlsConfig := &tls.Config{
@@ -274,18 +274,18 @@ func getTlsConfig(c *AppConfig) *tls.Config {
 	return tlsConfig
 }
 
-func getGrpcCrednetials(c *AppConfig, opts *CliOpts) (grpc.ServerOption, bool) {
+func getGrpcCrednetials(log *zerolog.Logger, c *AppConfig, opts *CliOpts) (grpc.ServerOption, bool) {
 	mode := TlsMode(c.Server.Tls.Mode)
 
 	switch mode {
 	case NONE_TLS_MODE:
 		return nil, false
 	case TLS_TLS_MODE:
-		return grpc.Creds(credentials.NewTLS(getTlsConfig(c))), true
+		return grpc.Creds(credentials.NewTLS(getTlsConfig(log, c))), true
 	case MTLS_TLS_MODE:
-		return grpc.Creds(credentials.NewTLS(getMtlsCofig(c, opts))), true
+		return grpc.Creds(credentials.NewTLS(getMtlsCofig(log, c, opts))), true
 	default:
-		log.Fatalf("Invalid TLS mode: %v. It must be one of: none, tls, mtls", mode)
+		log.Fatal().Msgf("Invalid TLS mode: %v. It must be one of: none, tls, mtls.", mode)
 	}
 
 	return nil, false
@@ -320,13 +320,13 @@ func NewApp(opts CliOpts) *App {
 
 	conf, err := NewAppConfig(opts.ConfigPath)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("")
 	}
 
 	dbUrl := fmt.Sprintf("postgresql://%v:%v@%v:%v/%v", conf.Database.User, conf.Database.Pass, conf.Database.Host, conf.Database.Port, conf.Database.Name)
 	connPool, err := pgxpool.New(ctx, dbUrl)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("")
 	}
 
 	pp, err := processor.NewPaymentProcessor(ctx, connPool, appConfigToDaemonsConfig(conf), log)
