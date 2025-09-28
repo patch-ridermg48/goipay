@@ -1,11 +1,12 @@
 module github.com/chekist32/goipay
 
 go 1.23.0
+
 toolchain go1.24.2
 
 require (
 	github.com/btcsuite/btcd v0.24.2
-	github.com/btcsuite/btcd/btcec/v2 v2.3.4
+	github.com/btcsuite/btcd/btcec/v2 v2.3.5
 	github.com/btcsuite/btcd/btcutil v1.1.6
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0
 	github.com/chekist32/go-monero v0.2.4
